@@ -1,0 +1,30 @@
+{
+  "name": "slow-route-planner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local-first personal scenic route planner + live ride dashboard.",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev -w @srp/server",
+    "dev:client": "npm run dev -w @srp/client",
+    "build": "npm run build -w @srp/client",
+    "typecheck": "tsc -p shared/tsconfig.json --noEmit && tsc -p server/tsconfig.json --noEmit && tsc -p client/tsconfig.json --noEmit && tsc -p api/tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1"
+  }
+}
