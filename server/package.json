@@ -7,6 +7,7 @@
   "types": "src/app.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "build": "echo 'server: runs as a Vercel serverless function from TypeScript source — no build step'",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

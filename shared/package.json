@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "build": "echo 'shared: consumed as TypeScript source — no build step'",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }
