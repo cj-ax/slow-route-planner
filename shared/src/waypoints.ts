@@ -1,4 +1,4 @@
-import type { Waypoint } from "./types";
+import type { Waypoint } from "./types.js";
 
 /** Pure array move — returns a new array with the item moved from -> to. */
 export function reorderWaypoints(

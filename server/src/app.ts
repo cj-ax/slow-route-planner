@@ -1,11 +1,11 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
-import health from "./routes/health";
-import parseRoutePrompt from "./routes/parseRoutePrompt";
-import generateRoutePlan from "./routes/generateRoutePlan";
-import searchPlaces from "./routes/searchPlaces";
-import routeGeometry from "./routes/routeGeometry";
-import savedRoutes from "./routes/savedRoutes";
+import health from "./routes/health.js";
+import parseRoutePrompt from "./routes/parseRoutePrompt.js";
+import generateRoutePlan from "./routes/generateRoutePlan.js";
+import searchPlaces from "./routes/searchPlaces.js";
+import routeGeometry from "./routes/routeGeometry.js";
+import savedRoutes from "./routes/savedRoutes.js";
 
 export function createApp() {
   const app = express();

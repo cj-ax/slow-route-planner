@@ -1,7 +1,7 @@
 import type { RoutePlan } from "@srp/shared";
-import { config } from "../config";
-import { jsonFileStore } from "./jsonFileStore";
-import { vercelBlobStore } from "./vercelBlobStore";
+import { config } from "../config.js";
+import { jsonFileStore } from "./jsonFileStore.js";
+import { vercelBlobStore } from "./vercelBlobStore.js";
 
 export interface RouteStore {
   list(): Promise<RoutePlan[]>;

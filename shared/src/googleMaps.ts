@@ -1,4 +1,4 @@
-import type { RoutePlan, Waypoint } from "./types";
+import type { RoutePlan, Waypoint } from "./types.js";
 
 /** Coordinate string when available, otherwise the searchable text. */
 function stopParam(w: Waypoint): string {

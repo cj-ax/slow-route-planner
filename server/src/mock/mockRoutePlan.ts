@@ -6,7 +6,7 @@ import {
   type RouteRequest,
   type Waypoint,
 } from "@srp/shared";
-import { createMockPlaces } from "./mockPlaces";
+import { createMockPlaces } from "./mockPlaces.js";
 
 type WaypointSeed = Omit<Waypoint, "id">;
 

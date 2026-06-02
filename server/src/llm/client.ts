@@ -8,10 +8,10 @@ import type {
   WaypointPurpose,
 } from "@srp/shared";
 import { buildGoogleMapsUrl } from "@srp/shared";
-import { config, llmMockMode } from "../config";
-import { createMockRoutePlan } from "../mock/mockRoutePlan";
-import { geocode } from "../routing/geocode";
-import { ROUTE_PLANNER_SYSTEM_PROMPT } from "../prompts/routePlannerPrompt";
+import { config, llmMockMode } from "../config.js";
+import { createMockRoutePlan } from "../mock/mockRoutePlan.js";
+import { geocode } from "../routing/geocode.js";
+import { ROUTE_PLANNER_SYSTEM_PROMPT } from "../prompts/routePlannerPrompt.js";
 
 // Opus 4.8 is the default; override with LLM_MODEL (e.g. claude-haiku-4-5 for
 // a cheaper/faster option, or claude-sonnet-4-6 for a middle ground).

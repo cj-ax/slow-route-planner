@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { PlaceOption, PlaceType, SearchPlacesRequest } from "@srp/shared";
-import { config, placesMockMode } from "../config";
-import { createMockPlaces } from "../mock/mockPlaces";
+import { config, placesMockMode } from "../config.js";
+import { createMockPlaces } from "../mock/mockPlaces.js";
 
 const TYPE_KEYWORD: Record<PlaceType, string> = {
   coffee: "coffee shop",

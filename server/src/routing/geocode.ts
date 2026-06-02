@@ -1,5 +1,5 @@
 import type { LatLng } from "@srp/shared";
-import { config } from "../config";
+import { config } from "../config.js";
 
 const GEOCODE_URL = "https://api.openrouteservice.org/geocode/search";
 

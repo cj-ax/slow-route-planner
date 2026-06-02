@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { LngLat, RouteGeometryResponse } from "@srp/shared";
-import { getRouteGeometry } from "../routing/client";
+import { getRouteGeometry } from "../routing/client.js";
 
 const router = Router();
 

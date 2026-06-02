@@ -1,6 +1,6 @@
 import { del, list, put } from "@vercel/blob";
 import type { RoutePlan } from "@srp/shared";
-import type { RouteStore } from "./store";
+import type { RouteStore } from "./store.js";
 
 // One JSON blob per route. Personal scale (a handful of routes) makes the
 // extra fetches irrelevant. Blobs are "public" tier but live under a random,

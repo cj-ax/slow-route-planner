@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RoutePlan } from "@srp/shared";
-import type { RouteStore } from "./store";
+import type { RouteStore } from "./store.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url)); // server/src/storage
 const dataDir = path.resolve(here, "../../data"); // server/data

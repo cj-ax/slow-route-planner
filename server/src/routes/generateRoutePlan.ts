@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { RideType, RouteRequest } from "@srp/shared";
-import { generateRoutePlan } from "../llm/client";
+import { generateRoutePlan } from "../llm/client.js";
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { SearchPlacesRequest } from "@srp/shared";
-import { searchPlaces } from "../places/client";
+import { searchPlaces } from "../places/client.js";
 
 const router = Router();
 

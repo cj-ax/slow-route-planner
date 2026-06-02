@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import type { RoutePlan } from "@srp/shared";
-import { getStore } from "../storage/store";
+import { getStore } from "../storage/store.js";
 
 const router = Router();
 

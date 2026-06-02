@@ -1,4 +1,4 @@
-import type { LatLng, Waypoint } from "./types";
+import type { LatLng, Waypoint } from "./types.js";
 
 const EARTH_RADIUS_M = 6371000;
 

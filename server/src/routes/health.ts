@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { HealthStatus } from "@srp/shared";
-import { config, mockMode } from "../config";
+import { config, mockMode } from "../config.js";
 
 const router = Router();
 

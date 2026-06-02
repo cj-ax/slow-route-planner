@@ -1,5 +1,5 @@
 import type { LngLat } from "@srp/shared";
-import { config } from "../config";
+import { config } from "../config.js";
 
 const ORS_URL =
   "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
