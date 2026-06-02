@@ -44,7 +44,18 @@ export async function searchPlaces(req: SearchPlacesRequest): Promise<PlaceOptio
     url.searchParams.set("key", config.googlePlacesApiKey);
 
     const res = await fetch(url);
-    const data = (await res.json()) as { results?: GoogleTextSearchResult[] };
+    const data = (await res.json()) as {
+      results?: GoogleTextSearchResult[];
+      status?: string;
+      error_message?: string;
+    };
+    // Google returns HTTP 200 with a status field; surface real failures
+    // (e.g. REQUEST_DENIED / API not enabled) so they fall back to mocks.
+    if (data.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+      throw new Error(
+        `Google Places ${data.status}${data.error_message ? `: ${data.error_message}` : ""}`,
+      );
+    }
     const results = data.results ?? [];
 
     return results.slice(0, 6).map((r) => ({

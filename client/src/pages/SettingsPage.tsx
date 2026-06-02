@@ -52,6 +52,12 @@ export function SettingsPage() {
           <div className="status-list">
             <StatusRow label="LLM (route generation)" ok={health.llmConfigured} />
             <StatusRow label="Google Places (search)" ok={health.placesConfigured} />
+            <StatusRow
+              label="Routing (road geometry)"
+              ok={health.routingConfigured}
+              okText="OpenRouteService"
+              offText="Straight lines"
+            />
             <StatusRow label="Custom map style" ok={mapStyleConfigured} okText="Custom vector" offText="Dark raster fallback" />
             <StatusRow
               label="Mode"

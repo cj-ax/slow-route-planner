@@ -12,6 +12,7 @@ dotenv.config({ path: path.join(repoRoot, ".env") });
 const useMocksEnv = (process.env.USE_MOCKS ?? "true").toLowerCase() !== "false";
 const llmConfigured = Boolean(process.env.LLM_API_KEY);
 const placesConfigured = Boolean(process.env.GOOGLE_PLACES_API_KEY);
+const routingConfigured = Boolean(process.env.ORS_API_KEY);
 const blobConfigured = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
 export const config = {
@@ -19,10 +20,12 @@ export const config = {
   useMocks: useMocksEnv,
   llmConfigured,
   placesConfigured,
+  routingConfigured,
   blobConfigured,
   llmApiKey: process.env.LLM_API_KEY ?? "",
   llmModel: process.env.LLM_MODEL ?? "",
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
+  orsApiKey: process.env.ORS_API_KEY ?? "",
   storageBackend: (blobConfigured ? "vercel-blob" : "json-file") as
     | "vercel-blob"
     | "json-file",

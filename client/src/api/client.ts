@@ -1,6 +1,8 @@
 import type {
   HealthStatus,
+  LngLat,
   PlaceOption,
+  RouteGeometryResponse,
   RoutePlan,
   RouteRequest,
   SearchPlacesRequest,
@@ -47,6 +49,11 @@ export const api = {
     request<PlaceOption[]>("/search-places", {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+  routeGeometry: (coordinates: LngLat[]) =>
+    request<RouteGeometryResponse>("/route-geometry", {
+      method: "POST",
+      body: JSON.stringify({ coordinates }),
     }),
   saveRoute: (plan: RoutePlan) =>
     request<RoutePlan>("/save-route", {

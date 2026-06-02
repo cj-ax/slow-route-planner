@@ -1,9 +1,21 @@
 import { randomUUID } from "node:crypto";
-import type { RoutePlan, RouteRequest, Waypoint, WaypointPurpose } from "@srp/shared";
+import Anthropic from "@anthropic-ai/sdk";
+import type {
+  LatLng,
+  RoutePlan,
+  RouteRequest,
+  Waypoint,
+  WaypointPurpose,
+} from "@srp/shared";
 import { buildGoogleMapsUrl } from "@srp/shared";
 import { config, llmMockMode } from "../config";
 import { createMockRoutePlan } from "../mock/mockRoutePlan";
+import { geocode } from "../routing/geocode";
 import { ROUTE_PLANNER_SYSTEM_PROMPT } from "../prompts/routePlannerPrompt";
+
+// Opus 4.8 is the default; override with LLM_MODEL (e.g. claude-haiku-4-5 for
+// a cheaper/faster option, or claude-sonnet-4-6 for a middle ground).
+const DEFAULT_MODEL = "claude-opus-4-8";
 
 const VALID_PURPOSES: WaypointPurpose[] = [
   "start",
@@ -68,36 +80,89 @@ export function mapLlmJsonToPlan(json: LlmRoutePlanJson): RoutePlan {
   return plan;
 }
 
+/** Turn the structured request into the user-turn prompt for the LLM. */
+function buildUserMessage(r: RouteRequest): string {
+  const endpoint = r.endpointIntent
+    ? `End with: ${r.endpointIntent}${
+        r.customEndpointIntent ? ` (${r.customEndpointIntent})` : ""
+      }`
+    : "";
+  return [
+    `Ride request: ${r.rawPrompt}`,
+    `Start location: ${r.startLocation}`,
+    r.area ? `Area: ${r.area}` : "",
+    `Ride type: ${r.rideType}`,
+    endpoint,
+    r.targetDurationMinutes ? `Target duration: ${r.targetDurationMinutes} minutes` : "",
+    r.maxPreferredSpeedMph
+      ? `Prefer roads at or below about ${r.maxPreferredSpeedMph} mph`
+      : "",
+    r.avoid?.length ? `Avoid: ${r.avoid.join(", ")}` : "",
+    r.prefer?.length ? `Prefer: ${r.prefer.join(", ")}` : "",
+    "Respond with the route plan JSON only.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Pull the JSON text out of the response, tolerating accidental code fences. */
+function extractJson(message: Anthropic.Message): LlmRoutePlanJson {
+  const textBlock = message.content.find((b) => b.type === "text");
+  let text = textBlock && textBlock.type === "text" ? textBlock.text : "";
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) text = fenced[1];
+  return JSON.parse(text.trim()) as LlmRoutePlanJson;
+}
+
 /**
- * Placeholder for a real LLM call. Wire your provider here using
- * ROUTE_PLANNER_SYSTEM_PROMPT as the system prompt and the request as the user
- * message, then JSON.parse the response and pass it to mapLlmJsonToPlan().
- *
- * Example (Anthropic, via fetch — no SDK needed):
- *   const res = await fetch("https://api.anthropic.com/v1/messages", {
- *     method: "POST",
- *     headers: {
- *       "x-api-key": config.llmApiKey,
- *       "anthropic-version": "2023-06-01",
- *       "content-type": "application/json",
- *     },
- *     body: JSON.stringify({
- *       model: config.llmModel || "claude-sonnet-4-6",
- *       max_tokens: 2000,
- *       system: ROUTE_PLANNER_SYSTEM_PROMPT,
- *       messages: [{ role: "user", content: buildUserMessage(request) }],
- *     }),
- *   });
- *   const data = await res.json();
- *   const text = data.content?.[0]?.text ?? "";
- *   return mapLlmJsonToPlan(JSON.parse(text));
+ * Best-effort: resolve each waypoint's map query to coordinates via ORS
+ * geocoding so LLM-generated routes render on the map and follow roads. The
+ * ride start anchors the search so ambiguous street names resolve nearby.
+ * Failures leave a waypoint un-located rather than aborting the plan.
  */
-async function callRouteLlm(_request: RouteRequest): Promise<RoutePlan> {
-  void config;
-  void ROUTE_PLANNER_SYSTEM_PROMPT;
-  throw new Error(
-    "Real LLM integration is not wired yet — see server/src/llm/client.ts",
+async function geocodeWaypoints(plan: RoutePlan, startText: string): Promise<void> {
+  if (!config.routingConfigured) return;
+  const anchor: LatLng | undefined = (await geocode(startText)) ?? undefined;
+  await Promise.all(
+    plan.waypoints.map(async (w) => {
+      if (w.lat !== undefined && w.lng !== undefined) return;
+      const found = await geocode(w.query || w.label, anchor);
+      if (found) {
+        w.lat = found.lat;
+        w.lng = found.lng;
+      }
+    }),
   );
+}
+
+/**
+ * Real route generation via the Anthropic Messages API. The static planner
+ * prompt is cached (cache_control); adaptive thinking keeps the visible text a
+ * clean JSON object. LLM waypoints carry no coordinates, so we geocode them
+ * before returning.
+ */
+async function callRouteLlm(request: RouteRequest): Promise<RoutePlan> {
+  const client = new Anthropic({ apiKey: config.llmApiKey });
+  const model = config.llmModel || DEFAULT_MODEL;
+  const message = await client.messages.create({
+    model,
+    max_tokens: 8000,
+    thinking: { type: "adaptive" },
+    system: [
+      {
+        type: "text",
+        text: ROUTE_PLANNER_SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: buildUserMessage(request) }],
+  });
+
+  console.log(`[llm] route generated via ${message.model}`);
+  const plan = mapLlmJsonToPlan(extractJson(message));
+  await geocodeWaypoints(plan, request.startLocation);
+  plan.googleMapsUrl = buildGoogleMapsUrl(plan);
+  return plan;
 }
 
 /**

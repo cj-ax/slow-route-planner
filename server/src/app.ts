@@ -4,6 +4,7 @@ import health from "./routes/health";
 import parseRoutePrompt from "./routes/parseRoutePrompt";
 import generateRoutePlan from "./routes/generateRoutePlan";
 import searchPlaces from "./routes/searchPlaces";
+import routeGeometry from "./routes/routeGeometry";
 import savedRoutes from "./routes/savedRoutes";
 
 export function createApp() {
@@ -17,6 +18,7 @@ export function createApp() {
   api.use(parseRoutePrompt);
   api.use(generateRoutePlan);
   api.use(searchPlaces);
+  api.use(routeGeometry);
   api.use(savedRoutes);
   app.use("/api", api);
 

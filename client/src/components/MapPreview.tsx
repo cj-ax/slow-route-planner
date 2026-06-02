@@ -4,6 +4,7 @@ import type { RoutePlan, WaypointPurpose } from "@srp/shared";
 import { getMapStyle } from "../map/style";
 import { PURPOSE_META } from "../map/purpose";
 import { useMapRoute } from "../hooks/useMapRoute";
+import { useRouteGeometry } from "../hooks/useRouteGeometry";
 
 const ROUTE_SOURCE = "srp-route";
 const ROUTE_LAYER = "srp-route-line";
@@ -62,6 +63,7 @@ export function MapPreview({
   selectRef.current = onSelectWaypoint;
   const [loaded, setLoaded] = useState(false);
   const route = useMapRoute(plan);
+  const { roadCoords } = useRouteGeometry(route.lineCoords);
 
   // Initialize the map once.
   useEffect(() => {
@@ -98,7 +100,7 @@ export function MapPreview({
     if (!map || !loaded) return;
 
     const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
-    source?.setData(lineData(route.lineCoords));
+    source?.setData(lineData(roadCoords ?? route.lineCoords));
 
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = route.markers.map((mk) => {
@@ -116,7 +118,7 @@ export function MapPreview({
         .setPopup(new maplibregl.Popup({ offset: 18, closeButton: false }).setText(mk.label))
         .addTo(map);
     });
-  }, [loaded, route, selectedWaypointId]);
+  }, [loaded, route, roadCoords, selectedWaypointId]);
 
   // Fit bounds when the route geometry changes (not on selection).
   useEffect(() => {

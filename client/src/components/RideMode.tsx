@@ -8,13 +8,14 @@ import {
   formatSpeed,
   getNextWaypoint,
   isWaypointReached,
-  waypointsToLine,
+  type LatLng,
   type RideStatus,
   type RoutePlan,
 } from "@srp/shared";
 import { getMapStyle } from "../map/style";
 import { PURPOSE_META } from "../map/purpose";
 import { useMapRoute } from "../hooks/useMapRoute";
+import { useRouteGeometry } from "../hooks/useRouteGeometry";
 import { useLiveLocation } from "../hooks/useLiveLocation";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { loadRideConfig } from "../config/ride";
@@ -64,11 +65,18 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
   const [debugOpen, setDebugOpen] = useState(false);
 
   const route = useMapRoute(plan);
+  const { roadCoords } = useRouteGeometry(route.lineCoords);
   const live = useLiveLocation();
   const wake = useWakeLock();
   const rideConfig = useMemo(() => loadRideConfig(), []);
 
-  const routeLine = useMemo(() => waypointsToLine(plan.waypoints), [plan.waypoints]);
+  // Off-route is measured against the drawn line: the road geometry when ORS is
+  // available, otherwise the straight waypoint segments.
+  const drawCoords = roadCoords ?? route.lineCoords;
+  const routeLine: LatLng[] = useMemo(
+    () => drawCoords.map(([lng, lat]) => ({ lat, lng })),
+    [drawCoords],
+  );
   const nextWaypoint = useMemo(
     () => getNextWaypoint(plan.waypoints, { reachedIds }),
     [plan.waypoints, reachedIds],
@@ -149,7 +157,7 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
     const map = mapRef.current;
     if (!map || !loaded) return;
     const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
-    source?.setData(lineData(route.lineCoords));
+    source?.setData(lineData(drawCoords));
 
     waypointMarkersRef.current.forEach((m) => m.remove());
     waypointMarkersRef.current = route.markers.map((mk) => {
@@ -161,7 +169,7 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
       );
       return new maplibregl.Marker({ element: el }).setLngLat([mk.lng, mk.lat]).addTo(map);
     });
-  }, [loaded, route, reachedIds, nextWaypoint?.id]);
+  }, [loaded, route, drawCoords, reachedIds, nextWaypoint?.id]);
 
   // Fit the route once it's drawn.
   useEffect(() => {

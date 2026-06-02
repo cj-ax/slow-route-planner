@@ -1,8 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Load .env from the repo root so one file serves both server and client
+  // (VITE_* vars). Without this, Vite would only read client/.env.
+  envDir: fileURLToPath(new URL("..", import.meta.url)),
   server: {
     port: 5173,
     // Proxy API calls to the local Express server so the app works with no

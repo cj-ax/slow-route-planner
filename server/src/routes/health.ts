@@ -9,6 +9,7 @@ router.get("/health", (_req, res) => {
     status: "ok",
     llmConfigured: config.llmConfigured,
     placesConfigured: config.placesConfigured,
+    routingConfigured: config.routingConfigured,
     blobConfigured: config.blobConfigured,
     mockMode,
     storageBackend: config.storageBackend,

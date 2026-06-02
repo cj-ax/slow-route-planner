@@ -72,6 +72,7 @@ See [`.env.example`](.env.example) for the full annotated list. Highlights:
 | `PORT` | server | API port for local dev | `3001` |
 | `LLM_API_KEY`, `LLM_MODEL` | server | Real route generation. Blank → mock plans. | blank |
 | `GOOGLE_PLACES_API_KEY` | server | Real place search. Blank → mock places. | blank |
+| `ORS_API_KEY` | server | OpenRouteService key for **road-following routes**. Blank → straight lines. Independent of `USE_MOCKS`. | blank |
 | `USE_MOCKS` | server | Force mock mode even with keys present | `true` |
 | `BLOB_READ_WRITE_TOKEN` | server | Auto-provided by Vercel Blob. Switches storage to Blob. | unset (uses JSON file) |
 | `VITE_API_BASE_URL` | client | API origin. **Leave blank** — dev proxies `/api` to `:3001`, Vercel serves it same-origin. | blank |
@@ -79,8 +80,22 @@ See [`.env.example`](.env.example) for the full annotated list. Highlights:
 
 **Secrets live only in server-side env vars.** `VITE_*` values are bundled into the browser, so the
 only client-exposed value is the map style URL (a domain-restricted MapTiler key is normal for
-tiles). The LLM and Places keys never reach the client. Settings shows configuration **status only**,
-never values.
+tiles). The LLM, Places, and routing keys never reach the client. Settings shows configuration
+**status only**, never values.
+
+### Road-following routes (recommended — fixes lines across water)
+
+Without a routing key the map draws **straight lines between waypoints**, which cut across lakes.
+Set an [OpenRouteService](https://openrouteservice.org/dev) key (free) to draw real road geometry
+instead — it's called server-side, so the key never reaches the browser:
+
+```
+ORS_API_KEY=your_ors_key
+```
+
+This is independent of `USE_MOCKS`, so you get real roads even while route plans are mocked. The same
+geometry powers Ride Mode's off-route detection. Routing uses the `driving-car` profile for all ride
+types in v1.
 
 ### Better-looking map (recommended)
 
@@ -95,13 +110,17 @@ Restrict the key by domain in the MapTiler dashboard.
 
 ### Going live (real LLM / Places)
 
-- **LLM:** the route generator is a fetch-based placeholder in
-  [`server/src/llm/client.ts`](server/src/llm/client.ts). Wire your provider there (an Anthropic
-  example is in the comments), set `LLM_API_KEY` / `LLM_MODEL`, and set `USE_MOCKS=false`.
+- **LLM:** route generation calls the **Anthropic Messages API** in
+  [`server/src/llm/client.ts`](server/src/llm/client.ts) (via `@anthropic-ai/sdk`, with prompt
+  caching on the planner system prompt and adaptive thinking). Set `LLM_API_KEY`, optionally
+  `LLM_MODEL` (default `claude-opus-4-8`; `claude-haiku-4-5` is cheaper/faster), and `USE_MOCKS=false`.
+  Any call failure falls back to a mock plan so the app never breaks.
+- **Geocoding:** LLM waypoints have no coordinates, so they're geocoded via **OpenRouteService**
+  ([`server/src/routing/geocode.ts`](server/src/routing/geocode.ts), reusing `ORS_API_KEY`) — this
+  is what lets AI-generated routes appear on the map and follow roads. Without an ORS key, LLM
+  routes still generate but render as a sparse pin list.
 - **Places:** [`server/src/places/client.ts`](server/src/places/client.ts) has a Google Places Text
   Search call; set `GOOGLE_PLACES_API_KEY` and `USE_MOCKS=false`.
-- LLM waypoints aren't geocoded in v1 (mock data carries coordinates). To plot LLM-generated routes,
-  add a geocoding step where noted in the LLM client.
 
 ---
 
@@ -109,8 +128,8 @@ Restrict the key by domain in the MapTiler dashboard.
 
 The same tree deploys as a static client + one serverless function.
 
-1. **Push to a Git repo** and import it in Vercel (or use the `vercel` CLI). This repo isn't a git
-   repo yet — run `git init && git add -A && git commit -m "Initial commit"` first.
+1. **Push to a Git repo** and import it in Vercel (or use the `vercel` CLI). The repo lives at
+   <https://github.com/cj-ax/slow-route-planner>.
 2. Vercel uses [`vercel.json`](vercel.json): build → `client/dist`, route `/api/*` to the serverless
    Express app, everything else → the SPA.
 3. **Create a Vercel Blob store** and connect it to the project (Storage tab). Vercel injects
@@ -119,6 +138,7 @@ The same tree deploys as a static client + one serverless function.
 4. **Set env vars** in the Vercel project:
    - `VITE_API_BASE_URL` → leave **unset** (client uses same-origin `/api`).
    - `VITE_MAP_STYLE_URL` → your MapTiler style URL (optional but recommended).
+   - `ORS_API_KEY` → OpenRouteService key for road-following routes (recommended).
    - `LLM_API_KEY` / `LLM_MODEL` / `GOOGLE_PLACES_API_KEY` → only if going live; set `USE_MOCKS=false`.
 5. Open the deployed URL on your phone, allow location, and ride.
 
@@ -141,8 +161,9 @@ The same tree deploys as a static client + one serverless function.
 ## Not included (by design)
 
 Auth / accounts / admin, payments, production security hardening, turn-by-turn navigation, voice or
-lane guidance, traffic rerouting, offline / background GPS, CarPlay / Android Auto, real road-routing
-geometry (v1 draws straight segments between waypoints).
+lane guidance, traffic rerouting, offline / background GPS, CarPlay / Android Auto. Road-following
+geometry is optional: with `ORS_API_KEY` set the map follows roads; without it, v1 draws straight
+segments between waypoints.
 
 **Speed limits are a preference, not a guarantee.** Route plans include a manual-check reminder to
 verify speed limits before riding, and Google Maps may reroute onto faster roads — follow the planned

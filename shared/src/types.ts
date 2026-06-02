@@ -105,9 +105,24 @@ export interface HealthStatus {
   status: "ok";
   llmConfigured: boolean;
   placesConfigured: boolean;
+  routingConfigured: boolean;
   blobConfigured: boolean;
   mockMode: boolean;
   storageBackend: "json-file" | "vercel-blob";
+}
+
+/** A [lng, lat] coordinate pair (GeoJSON / MapLibre order). */
+export type LngLat = [number, number];
+
+export interface RouteGeometryRequest {
+  /** Waypoints to route through, in order, as [lng, lat] pairs. */
+  coordinates: LngLat[];
+}
+
+export interface RouteGeometryResponse {
+  /** Road-following polyline as [lng, lat] pairs. Empty when unavailable. */
+  geometry: LngLat[];
+  source: "ors" | "none";
 }
 
 export interface SearchPlacesRequest {
