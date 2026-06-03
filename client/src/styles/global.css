@@ -698,7 +698,7 @@ code {
   right: 0;
   bottom: 0;
   z-index: 30;
-  height: 92vh;
+  height: 92dvh;
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
@@ -712,24 +712,25 @@ code {
   transform: translateY(0);
 }
 .route-sheet--half {
-  transform: translateY(45vh);
+  transform: translateY(45dvh);
 }
 .route-sheet--collapsed {
-  transform: translateY(calc(92vh - var(--head-h, 210px)));
+  transform: translateY(calc(92dvh - var(--head-h, 210px)));
 }
 .route-sheet__top {
   flex: 0 0 auto;
 }
-.route-sheet__handle {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: center;
-  padding: 0.6rem 0 0.4rem;
+.route-sheet__drag {
   cursor: grab;
   touch-action: none;
 }
-.route-sheet__handle:active {
+.route-sheet__drag:active {
   cursor: grabbing;
+}
+.route-sheet__handle {
+  display: flex;
+  justify-content: center;
+  padding: 0.6rem 0 0.4rem;
 }
 .route-sheet__grabber {
   width: 2.6rem;

@@ -25,7 +25,7 @@ interface PromptFormProps {
 export function PromptForm({ loading, onGenerate, hero = false }: PromptFormProps) {
   // Hero starts empty (small, grows with typing); the classic form keeps the example.
   const [rawPrompt, setRawPrompt] = useState(hero ? "" : EXAMPLE_PROMPT);
-  const [startLocation, setStartLocation] = useState("Wayzata, MN");
+  const [startLocation, setStartLocation] = useState("");
   const [rideType, setRideType] = useState<RideType>("motorcycle");
   const [endpointIntent, setEndpointIntent] = useState<EndpointIntent>("beer");
   const [targetDuration, setTargetDuration] = useState<string>("105");

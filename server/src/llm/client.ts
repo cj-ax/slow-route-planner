@@ -99,7 +99,9 @@ function buildUserMessage(r: RouteRequest): string {
     : "";
   return [
     `Ride request: ${r.rawPrompt}`,
-    `Start location: ${r.startLocation}`,
+    r.startLocation
+      ? `Start location: ${r.startLocation}`
+      : "Start location: not given — use the start the rider named in the request above.",
     r.area ? `Area: ${r.area}` : "",
     `Ride type: ${r.rideType}`,
     endpoint,
@@ -208,14 +210,39 @@ function twoOpt(seq: Waypoint[]): void {
   }
 }
 
+/** Centroid (mean lat/lng) of a set of located waypoints. */
+function centroidOf(pts: Waypoint[]): LatLng {
+  const lat = pts.reduce((s, p) => s + (p.lat as number), 0) / pts.length;
+  const lng = pts.reduce((s, p) => s + (p.lng as number), 0) / pts.length;
+  return { lat, lng };
+}
+
 /**
- * Reorder the middle waypoints so the drawn line flows instead of zig-zagging.
- * Seeds with a nearest-neighbour path, then runs 2-opt to uncross it — so a
- * "loop around the lake" comes out as a clean ring rather than a horseshoe.
- * Keeps the start first and the destination last; un-located waypoints keep
- * their relative order just before the destination.
+ * Order located waypoints as a clean ring: sort by polar angle around the
+ * centroid, starting just past the start's angle and sweeping one direction.
+ * This forces the route to go all the way around (covering every side) without
+ * crossing back on itself — the right shape for "a loop around the lake".
  */
-function reorderForFlow(waypoints: Waypoint[]): Waypoint[] {
+function angleSortRing(start: Waypoint, located: Waypoint[]): Waypoint[] {
+  const c = centroidOf([start, ...located]);
+  const startAngle = Math.atan2((start.lat as number) - c.lat, (start.lng as number) - c.lng);
+  return located
+    .map((w) => {
+      const a = Math.atan2((w.lat as number) - c.lat, (w.lng as number) - c.lng);
+      return { w, rel: (a - startAngle + 2 * Math.PI) % (2 * Math.PI) };
+    })
+    .sort((a, b) => a.rel - b.rel)
+    .map((x) => x.w);
+}
+
+/**
+ * Reorder the middle waypoints so the drawn line flows instead of zig-zagging,
+ * and demote far-flung bad geocodes (e.g. an ambiguous street name that lands
+ * in the wrong town) to "no pin" so the route never detours out to them.
+ * Loops are ordered as a ring (angle sort); point-to-point uses nearest
+ * neighbour + 2-opt. Start stays first and the destination last.
+ */
+function reorderForFlow(waypoints: Waypoint[], isLoop: boolean): Waypoint[] {
   if (waypoints.length < 4) return waypoints;
   const start = waypoints[0];
   if (start.lat === undefined || start.lng === undefined) return waypoints;
@@ -225,17 +252,39 @@ function reorderForFlow(waypoints: Waypoint[]): Waypoint[] {
   const fixed = new Set([start.id, ...(end ? [end.id] : [])]);
 
   const middle = waypoints.filter((w) => !fixed.has(w.id));
-  const located = middle.filter((w) => w.lat !== undefined && w.lng !== undefined);
+  let located = middle.filter((w) => w.lat !== undefined && w.lng !== undefined);
   const unlocated = middle.filter((w) => w.lat === undefined || w.lng === undefined);
   if (located.length < 2) return waypoints;
 
-  const seq: Waypoint[] = [start, ...nearestNeighbourOrder(start, located)];
-  if (end) seq.push(end);
-  twoOpt(seq);
+  // Demote outliers: anything far beyond the typical distance from the start is
+  // almost always a mis-geocode. Strip its coords so it shows as "no pin"
+  // (kept in the list) instead of dragging the line across the metro.
+  const dists = located.map((w) => distM(start, w)).sort((a, b) => a - b);
+  const median = dists[Math.floor(dists.length / 2)] || 0;
+  const limit = Math.max(median * 3, 12000);
+  for (const w of located) {
+    if (distM(start, w) > limit) {
+      w.lat = undefined;
+      w.lng = undefined;
+    }
+  }
+  located = located.filter((w) => w.lat !== undefined && w.lng !== undefined);
+  const demoted = middle.filter(
+    (w) => !fixed.has(w.id) && (w.lat === undefined || w.lng === undefined) && !unlocated.includes(w),
+  );
+  const tail = [...unlocated, ...demoted];
+  if (located.length < 2) return [start, ...located, ...tail, ...(end ? [end] : [])];
 
-  if (end) seq.splice(seq.length - 1, 0, ...unlocated);
-  else seq.push(...unlocated);
-  return seq;
+  let orderedMiddle: Waypoint[];
+  if (isLoop) {
+    orderedMiddle = angleSortRing(start, located);
+  } else {
+    const seq: Waypoint[] = [start, ...nearestNeighbourOrder(start, located), ...(end ? [end] : [])];
+    twoOpt(seq);
+    orderedMiddle = seq.filter((w) => !fixed.has(w.id));
+  }
+
+  return [start, ...orderedMiddle, ...tail, ...(end ? [end] : [])];
 }
 
 /**
@@ -267,8 +316,14 @@ async function callRouteLlm(request: RouteRequest): Promise<RoutePlan> {
 
   console.log(`[llm] route generated via ${message.model}`);
   const plan = mapLlmJsonToPlan(extractJson(message));
-  await geocodeWaypoints(plan, request.startLocation);
-  plan.waypoints = reorderForFlow(plan.waypoints);
+  // Anchor geocoding on the model's own start (e.g. "Victoria, MN") so it works
+  // even when the rider didn't fill the start field, and biases stops nearby.
+  await geocodeWaypoints(plan, plan.start || request.startLocation);
+  const isLoop =
+    isLoopRequest(request.rawPrompt) ||
+    (Boolean(plan.destination) &&
+      plan.start.trim().toLowerCase() === (plan.destination ?? "").trim().toLowerCase());
+  plan.waypoints = reorderForFlow(plan.waypoints, isLoop);
   plan.googleMapsUrl = buildGoogleMapsUrl(plan);
   return plan;
 }

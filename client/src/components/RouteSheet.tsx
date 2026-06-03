@@ -129,9 +129,11 @@ export function RouteSheet({
   }, [selectedWaypointId]);
 
   function onPointerDown(e: React.PointerEvent) {
+    // Let taps on the title input / action buttons behave normally.
+    if ((e.target as HTMLElement).closest("input, textarea, button, a, select")) return;
     const el = sheetRef.current;
     if (!el) return;
-    e.currentTarget.setPointerCapture(e.pointerId); // capture on the handle, not the sheet
+    e.currentTarget.setPointerCapture(e.pointerId); // capture on the drag area
     el.style.transition = "none";
     const startT = restingTranslate(snapRef.current);
     dragRef.current = { startY: e.clientY, startT, lastT: startT };
@@ -176,38 +178,40 @@ export function RouteSheet({
     <aside ref={sheetRef} className={`route-sheet route-sheet--${snap}`} aria-label="Route details">
       <div ref={topRef} className="route-sheet__top">
         <div
-          className="route-sheet__handle"
+          className="route-sheet__drag"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <span className="route-sheet__grabber" aria-hidden="true" />
-        </div>
-
-        <header className="route-sheet__header">
-          <input
-            className="route-sheet__title h-display"
-            value={plan.title}
-            onChange={(e) => onPatch({ title: e.target.value })}
-            placeholder="Route title"
-            aria-label="Route title"
-          />
-          <div className="route-sheet__stats">
-            <span className="route-sheet__stat">
-              <strong>{formatDistance(distanceM)}</strong>
-              <span className="eyebrow">Distance</span>
-            </span>
-            <span className="route-sheet__stat">
-              <strong>~{formatDuration(durationMin)}</strong>
-              <span className="eyebrow">Est. time</span>
-            </span>
-            <span className="route-sheet__stat">
-              <strong>{located.length}</strong>
-              <span className="eyebrow">Waypoints</span>
-            </span>
+          <div className="route-sheet__handle">
+            <span className="route-sheet__grabber" aria-hidden="true" />
           </div>
-        </header>
+
+          <header className="route-sheet__header">
+            <input
+              className="route-sheet__title h-display"
+              value={plan.title}
+              onChange={(e) => onPatch({ title: e.target.value })}
+              placeholder="Route title"
+              aria-label="Route title"
+            />
+            <div className="route-sheet__stats">
+              <span className="route-sheet__stat">
+                <strong>{formatDistance(distanceM)}</strong>
+                <span className="eyebrow">Distance</span>
+              </span>
+              <span className="route-sheet__stat">
+                <strong>~{formatDuration(durationMin)}</strong>
+                <span className="eyebrow">Est. time</span>
+              </span>
+              <span className="route-sheet__stat">
+                <strong>{located.length}</strong>
+                <span className="eyebrow">Waypoints</span>
+              </span>
+            </div>
+          </header>
+        </div>
 
         <div className="route-sheet__actions">
           <button type="button" className="btn btn--primary" onClick={onStartRide}>

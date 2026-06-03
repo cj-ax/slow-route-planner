@@ -18,7 +18,8 @@ Geography and ordering (very important — a route that backtracks is a bad rout
 - List the waypoints in the exact ORDER they should be driven, forming one smooth, continuous path from start to destination with NO backtracking, zig-zags, or jumping back and forth across the area. Each waypoint must be geographically adjacent to the one before it.
 - For a loop or round trip, the "destination" MUST be the same place as the start. Progress around the area in a single rotational direction (all the way around clockwise or counter-clockwise) and return to the start. Do not hop between opposite sides of the lake/area, and do not end on the far side from where you began.
 - The FIRST waypoint must be the start location (purpose "start"). The LAST waypoint must be the destination (purpose "destination").
-- Keep every waypoint within a sensible distance of the start and within the area the user named — do not place waypoints in unrelated towns far from the route.
+- When the user asks to go "around" a specific lake, park, or feature, HUG it: place waypoints close to its shoreline/perimeter and distribute them evenly across ALL sides — north, east, south, AND west. Do not skip a side (e.g. don't omit the south shore), and stay as close to the feature as the roads allow.
+- Keep every waypoint within a sensible distance of the start and within the area the user named — do not place waypoints in unrelated towns far from the route or on the opposite side of the metro.
 - Make each "query" a specific, unambiguous, map-searchable place that includes the city and state, e.g. "Bushaway Road, Wayzata, MN" or "Lord Fletcher's, Spring Park, MN" — not a bare street name. Precise queries are required so the map can locate each stop.
 
 JSON shape:
