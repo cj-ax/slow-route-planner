@@ -274,11 +274,27 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
       {/* Permission / wake-lock notices */}
       {denied && (
         <div className="ride-notice ride-notice--warn">
-          Location permission denied. Enable location access for this site, then reopen Ride Mode.
+          <p>
+            Location is blocked. On a phone, tap the address bar (or site settings) and allow
+            location for this site, then tap Try again. In an embedded preview, location may be
+            unavailable — open the app in its own browser tab.
+          </p>
+          <button type="button" className="btn btn--sm" onClick={() => live.startTracking()}>
+            Try again
+          </button>
         </div>
       )}
-      {!denied && !live.isTracking && !live.currentLocation && (
-        <div className="ride-notice">Allow location access to start tracking your position…</div>
+      {!denied && !live.currentLocation && (
+        <div className="ride-notice">
+          <p>
+            {live.isTracking
+              ? "Waiting for a GPS fix…"
+              : "Tap Enable location to start tracking your position."}
+          </p>
+          <button type="button" className="btn btn--sm" onClick={() => live.startTracking()}>
+            Enable location
+          </button>
+        </div>
       )}
       {live.error && !denied && <div className="ride-notice">{live.error}</div>}
       {!wake.supported && (

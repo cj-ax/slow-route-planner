@@ -80,6 +80,13 @@ export function mapLlmJsonToPlan(json: LlmRoutePlanJson): RoutePlan {
   return plan;
 }
 
+/** Detect a loop / round-trip request from the user's free text. */
+export function isLoopRequest(rawPrompt: string): boolean {
+  return /\b(loop|round[\s-]?trip|circular|circuit|out[\s-]and[\s-]back|return to (the )?start|back to (the )?start)\b/i.test(
+    rawPrompt || "",
+  );
+}
+
 /** Turn the structured request into the user-turn prompt for the LLM. */
 function buildUserMessage(r: RouteRequest): string {
   const endpoint = r.endpointIntent
@@ -87,12 +94,16 @@ function buildUserMessage(r: RouteRequest): string {
         r.customEndpointIntent ? ` (${r.customEndpointIntent})` : ""
       }`
     : "";
+  const loop = isLoopRequest(r.rawPrompt)
+    ? 'This is a LOOP / round trip: the route MUST return to the start. Set "destination" to the SAME place as the start, make the final waypoint the start area, and progress around the area in ONE rotational direction (clockwise or counter-clockwise) without crossing back over yourself.'
+    : "";
   return [
     `Ride request: ${r.rawPrompt}`,
     `Start location: ${r.startLocation}`,
     r.area ? `Area: ${r.area}` : "",
     `Ride type: ${r.rideType}`,
     endpoint,
+    loop,
     r.targetDurationMinutes ? `Target duration: ${r.targetDurationMinutes} minutes` : "",
     r.maxPreferredSpeedMph
       ? `Prefer roads at or below about ${r.maxPreferredSpeedMph} mph`
@@ -135,11 +146,74 @@ async function geocodeWaypoints(plan: RoutePlan, startText: string): Promise<voi
   );
 }
 
+function distM(a: Waypoint, b: Waypoint): number {
+  return calculateDistanceMeters(
+    { lat: a.lat as number, lng: a.lng as number },
+    { lat: b.lat as number, lng: b.lng as number },
+  );
+}
+
+/** Greedy nearest-neighbour ordering of `pts`, starting from `from`. */
+function nearestNeighbourOrder(from: Waypoint, pts: Waypoint[]): Waypoint[] {
+  const ordered: Waypoint[] = [];
+  let current = from;
+  const remaining = [...pts];
+  while (remaining.length) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < remaining.length; i += 1) {
+      const d = distM(current, remaining[i]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    current = remaining[bestIdx];
+    ordered.push(current);
+    remaining.splice(bestIdx, 1);
+  }
+  return ordered;
+}
+
 /**
- * Reorder the middle waypoints into a smooth nearest-neighbour path so the
- * road line flows instead of zig-zagging when the model's ordering is poor.
+ * 2-opt: repeatedly reverse the path segment between two points when doing so
+ * shortens the total length. This "uncrosses" the path and removes the
+ * back-and-forth that makes a loop look like a horseshoe. The first and last
+ * stops (start / destination) stay fixed.
+ */
+function twoOpt(seq: Waypoint[]): void {
+  const n = seq.length;
+  if (n < 4) return;
+  let improved = true;
+  let guard = 0;
+  while (improved && guard < 60) {
+    guard += 1;
+    improved = false;
+    for (let i = 1; i < n - 2; i += 1) {
+      for (let k = i + 1; k < n - 1; k += 1) {
+        const a = seq[i - 1];
+        const b = seq[i];
+        const c = seq[k];
+        const d = seq[k + 1];
+        if (distM(a, c) + distM(b, d) + 1e-6 < distM(a, b) + distM(c, d)) {
+          for (let lo = i, hi = k; lo < hi; lo += 1, hi -= 1) {
+            const tmp = seq[lo];
+            seq[lo] = seq[hi];
+            seq[hi] = tmp;
+          }
+          improved = true;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Reorder the middle waypoints so the drawn line flows instead of zig-zagging.
+ * Seeds with a nearest-neighbour path, then runs 2-opt to uncross it — so a
+ * "loop around the lake" comes out as a clean ring rather than a horseshoe.
  * Keeps the start first and the destination last; un-located waypoints keep
- * their relative order at the end of the middle section.
+ * their relative order just before the destination.
  */
 function reorderForFlow(waypoints: Waypoint[]): Waypoint[] {
   if (waypoints.length < 4) return waypoints;
@@ -155,29 +229,13 @@ function reorderForFlow(waypoints: Waypoint[]): Waypoint[] {
   const unlocated = middle.filter((w) => w.lat === undefined || w.lng === undefined);
   if (located.length < 2) return waypoints;
 
-  const ordered: Waypoint[] = [start];
-  let current = start;
-  const remaining = [...located];
-  while (remaining.length) {
-    let bestIdx = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < remaining.length; i++) {
-      const d = calculateDistanceMeters(
-        { lat: current.lat as number, lng: current.lng as number },
-        { lat: remaining[i].lat as number, lng: remaining[i].lng as number },
-      );
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = i;
-      }
-    }
-    current = remaining[bestIdx];
-    ordered.push(current);
-    remaining.splice(bestIdx, 1);
-  }
-  ordered.push(...unlocated);
-  if (end) ordered.push(end);
-  return ordered;
+  const seq: Waypoint[] = [start, ...nearestNeighbourOrder(start, located)];
+  if (end) seq.push(end);
+  twoOpt(seq);
+
+  if (end) seq.splice(seq.length - 1, 0, ...unlocated);
+  else seq.push(...unlocated);
+  return seq;
 }
 
 /**

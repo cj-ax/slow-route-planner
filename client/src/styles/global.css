@@ -1672,6 +1672,12 @@ code {
   top: auto;
   bottom: 13rem;
 }
+.ride-notice p {
+  margin: 0 0 0.5rem;
+}
+.ride-notice .btn {
+  background: var(--bg-elev-2);
+}
 
 .ride-next {
   background: var(--glass-bg);
