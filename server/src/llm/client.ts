@@ -227,10 +227,11 @@ export async function generateRoutePlan(request: RouteRequest): Promise<RoutePla
   try {
     return await callRouteLlm(request);
   } catch (err) {
-    console.warn("[llm] falling back to mock plan:", (err as Error).message);
+    const reason = (err as Error)?.message || "unknown error";
+    console.warn("[llm] falling back to mock plan:", reason);
     const plan = createMockRoutePlan(request);
     plan.manualChecks = [
-      "LLM call failed or is not wired yet — showing a mock plan. See README to enable real route generation.",
+      `Live AI route generation failed (${reason}) — showing a sample plan instead.`,
       ...plan.manualChecks,
     ];
     return plan;
