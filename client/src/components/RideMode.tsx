@@ -129,7 +129,10 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
       zoom: 13,
       attributionControl: false,
     });
+    const ro = new ResizeObserver(() => map.resize());
+    if (containerRef.current) ro.observe(containerRef.current);
     map.on("load", () => {
+      map.resize();
       map.addSource(ROUTE_SOURCE, { type: "geojson", data: lineData(route.lineCoords) });
       map.addLayer({
         id: ROUTE_CASING,
@@ -154,6 +157,7 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
     });
     mapRef.current = map;
     return () => {
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
       liveMarkerRef.current = null;

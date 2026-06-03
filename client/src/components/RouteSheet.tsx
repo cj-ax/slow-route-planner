@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   calculateDistanceMeters,
   formatDistance,
@@ -13,18 +14,19 @@ type Snap = "collapsed" | "half" | "expanded";
 
 /** Rough planning pace for a slow scenic ride (~30 km/h). */
 const PACE_MPS = 8.3;
-const COLLAPSED_PEEK = 132; // px of header visible when collapsed
 
 interface RouteSheetProps {
   plan: RoutePlan;
   selectedWaypointId?: string;
+  onSelectWaypoint?: (id: string) => void;
+  onPatch: (partial: Partial<RoutePlan>) => void;
   onStartRide: () => void;
   onSave: () => void;
   saving: boolean;
   savedId?: string;
   onShare?: () => void;
-  /** Detailed editors (waypoint list, place options, notes) shown when expanded. */
-  children?: ReactNode;
+  /** Ride Mode link target shown once the route is saved. */
+  rideHref?: string;
 }
 
 function hasCoords(w: Waypoint): w is Waypoint & { lat: number; lng: number } {
@@ -49,21 +51,17 @@ function formatDuration(minutes: number): string {
   return `${h}h ${m % 60}m`;
 }
 
-function snapTranslate(snap: Snap, vh: number): number {
-  if (snap === "expanded") return 0;
-  if (snap === "half") return vh * 0.42;
-  return vh * 0.92 - COLLAPSED_PEEK;
-}
-
 export function RouteSheet({
   plan,
   selectedWaypointId,
+  onSelectWaypoint,
+  onPatch,
   onStartRide,
   onSave,
   saving,
   savedId,
   onShare,
-  children,
+  rideHref,
 }: RouteSheetProps) {
   const route = useMapRoute(plan);
   const { roadCoords } = useRouteGeometry(route.lineCoords);
@@ -75,7 +73,6 @@ export function RouteSheet({
   const located = useMemo(() => plan.waypoints.filter(hasCoords), [plan.waypoints]);
   const selected = plan.waypoints.find((w) => w.id === selectedWaypointId);
 
-  // Cumulative straight-line ETA to the selected waypoint.
   const selectedEta = useMemo(() => {
     if (!selected || !hasCoords(selected)) return undefined;
     const idx = located.findIndex((w) => w.id === selected.id);
@@ -85,16 +82,59 @@ export function RouteSheet({
   }, [selected, located]);
 
   const sheetRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ startY: number; startTranslate: number; lastT: number } | null>(null);
-  const [snap, setSnap] = useState<Snap>("half");
+  const topRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startT: number; lastT: number } | null>(null);
+  const [snap, setSnap] = useState<Snap>("collapsed");
+  const snapRef = useRef<Snap>("collapsed");
+  snapRef.current = snap;
+
+  const restingTranslate = (s: Snap): number => {
+    const vh = window.innerHeight || 800;
+    const headH = topRef.current?.offsetHeight ?? 210;
+    if (s === "expanded") return 0;
+    if (s === "half") return Math.round(vh * 0.45);
+    return Math.max(0, Math.round(vh * 0.92 - headH)); // collapsed: only header visible
+  };
+
+  const applyResting = () => {
+    const el = sheetRef.current;
+    const top = topRef.current;
+    if (!el) return;
+    if (top) el.style.setProperty("--head-h", `${top.offsetHeight}px`);
+    if (dragRef.current) return;
+    el.style.transform = `translateY(${restingTranslate(snapRef.current)}px)`;
+  };
+
+  // Position the sheet whenever the snap changes.
+  useLayoutEffect(() => {
+    applyResting();
+  }, [snap]);
+
+  // Keep the collapsed peek correct as the header height / viewport changes.
+  useEffect(() => {
+    const top = topRef.current;
+    const ro = top ? new ResizeObserver(applyResting) : null;
+    if (top && ro) ro.observe(top);
+    window.addEventListener("resize", applyResting);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", applyResting);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Selecting a waypoint reveals its deep-dive — open the sheet if it's shut.
+  useEffect(() => {
+    if (selectedWaypointId) setSnap((s) => (s === "collapsed" ? "expanded" : s));
+  }, [selectedWaypointId]);
 
   function onPointerDown(e: React.PointerEvent) {
     const el = sheetRef.current;
     if (!el) return;
-    el.setPointerCapture(e.pointerId);
-    const start = snapTranslate(snap, window.innerHeight);
-    dragRef.current = { startY: e.clientY, startTranslate: start, lastT: start };
+    e.currentTarget.setPointerCapture(e.pointerId); // capture on the handle, not the sheet
     el.style.transition = "none";
+    const startT = restingTranslate(snapRef.current);
+    dragRef.current = { startY: e.clientY, startT, lastT: startT };
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -102,7 +142,7 @@ export function RouteSheet({
     const el = sheetRef.current;
     if (!d || !el) return;
     const vh = window.innerHeight;
-    const t = Math.max(0, Math.min(vh * 0.92 - 80, d.startTranslate + (e.clientY - d.startY)));
+    const t = Math.max(0, Math.min(vh * 0.92 - 60, d.startT + (e.clientY - d.startY)));
     el.style.transform = `translateY(${t}px)`;
     d.lastT = t;
   }
@@ -112,82 +152,83 @@ export function RouteSheet({
     const el = sheetRef.current;
     if (!d || !el) return;
     dragRef.current = null;
-    el.style.transition = "";
-    el.style.transform = "";
-    const vh = window.innerHeight;
-    const positions: [Snap, number][] = [
-      ["expanded", 0],
-      ["half", vh * 0.42],
-      ["collapsed", vh * 0.92 - COLLAPSED_PEEK],
-    ];
-    let best = positions[0];
-    for (const p of positions) {
-      if (Math.abs(p[1] - d.lastT) < Math.abs(best[1] - d.lastT)) best = p;
+    el.style.transition = ""; // restore the CSS transition
+    let best: Snap = "collapsed";
+    let bestDist = Infinity;
+    for (const s of ["expanded", "half", "collapsed"] as Snap[]) {
+      const dist = Math.abs(restingTranslate(s) - d.lastT);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = s;
+      }
     }
-    setSnap(best[0]);
+    el.style.transform = `translateY(${restingTranslate(best)}px)`;
+    setSnap(best);
   }
 
   const meta = selected ? PURPOSE_META[selected.purpose] : undefined;
+  const startWp = plan.waypoints[0];
+  const destWp =
+    [...plan.waypoints].reverse().find((w) => w.purpose === "destination") ??
+    plan.waypoints[plan.waypoints.length - 1];
 
   return (
-    <aside
-      ref={sheetRef}
-      className={`route-sheet route-sheet--${snap}`}
-      aria-label="Route details"
-    >
-      <div
-        className="route-sheet__handle"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-      >
-        <span className="route-sheet__grabber" aria-hidden="true" />
-      </div>
-
-      <header className="route-sheet__header">
-        <h2 className="route-sheet__title h-display">{plan.title}</h2>
-        <div className="route-sheet__stats">
-          <span className="route-sheet__stat">
-            <strong>{formatDistance(distanceM)}</strong>
-            <span className="eyebrow">Distance</span>
-          </span>
-          <span className="route-sheet__stat">
-            <strong>~{formatDuration(durationMin)}</strong>
-            <span className="eyebrow">Est. time</span>
-          </span>
-          <span className="route-sheet__stat">
-            <strong>{located.length}</strong>
-            <span className="eyebrow">Waypoints</span>
-          </span>
+    <aside ref={sheetRef} className={`route-sheet route-sheet--${snap}`} aria-label="Route details">
+      <div ref={topRef} className="route-sheet__top">
+        <div
+          className="route-sheet__handle"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
+          <span className="route-sheet__grabber" aria-hidden="true" />
         </div>
-      </header>
 
-      <div className="route-sheet__actions">
-        <button type="button" className="btn btn--primary" onClick={onStartRide}>
-          ▶ Start
-        </button>
-        <button type="button" className="btn" onClick={onSave} disabled={saving}>
-          {saving ? "Saving…" : savedId ? "Saved ✓" : "Save"}
-        </button>
-        {onShare && (
-          <button type="button" className="btn btn--ghost" onClick={onShare}>
-            Share
+        <header className="route-sheet__header">
+          <input
+            className="route-sheet__title h-display"
+            value={plan.title}
+            onChange={(e) => onPatch({ title: e.target.value })}
+            placeholder="Route title"
+            aria-label="Route title"
+          />
+          <div className="route-sheet__stats">
+            <span className="route-sheet__stat">
+              <strong>{formatDistance(distanceM)}</strong>
+              <span className="eyebrow">Distance</span>
+            </span>
+            <span className="route-sheet__stat">
+              <strong>~{formatDuration(durationMin)}</strong>
+              <span className="eyebrow">Est. time</span>
+            </span>
+            <span className="route-sheet__stat">
+              <strong>{located.length}</strong>
+              <span className="eyebrow">Waypoints</span>
+            </span>
+          </div>
+        </header>
+
+        <div className="route-sheet__actions">
+          <button type="button" className="btn btn--primary" onClick={onStartRide}>
+            ▶ Start
           </button>
-        )}
+          <button type="button" className="btn" onClick={onSave} disabled={saving}>
+            {saving ? "Saving…" : savedId ? "Saved ✓" : "Save"}
+          </button>
+          {onShare && (
+            <button type="button" className="btn btn--ghost" onClick={onShare}>
+              Share
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="route-sheet__body">
-        {plan.summary && <p className="route-sheet__summary">{plan.summary}</p>}
-
         {selected && (
           <div className="route-sheet__deepdive">
             <div className="route-sheet__deepdive-head">
-              <span
-                className="route-sheet__dot"
-                style={{ background: meta?.color }}
-                aria-hidden="true"
-              />
+              <span className="route-sheet__dot" style={{ background: meta?.color }} aria-hidden="true" />
               <div>
                 <strong className="route-sheet__deepdive-title">{selected.label}</strong>
                 <span className="route-sheet__deepdive-meta">
@@ -206,7 +247,68 @@ export function RouteSheet({
           </div>
         )}
 
-        {children}
+        {plan.summary && <p className="route-sheet__summary">{plan.summary}</p>}
+
+        <div className="route-sheet__tags">
+          {startWp && (
+            <button type="button" className="map-badge" onClick={() => onSelectWaypoint?.(startWp.id)}>
+              From: {plan.start}
+            </button>
+          )}
+          {plan.destination && destWp && (
+            <button type="button" className="map-badge" onClick={() => onSelectWaypoint?.(destWp.id)}>
+              To: {plan.destination}
+            </button>
+          )}
+          {plan.avoidRoads.map((a) => (
+            <span key={a} className="chip chip--avoid">
+              avoid: {a}
+            </span>
+          ))}
+        </div>
+
+        <label className="route-sheet__rating">
+          <span className="eyebrow">Your rating</span>
+          <div className="rating">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={`rating__star${(plan.rating ?? 0) >= n ? " is-active" : ""}`}
+                onClick={() => onPatch({ rating: plan.rating === n ? undefined : n })}
+                aria-label={`${n} star${n > 1 ? "s" : ""}`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+        </label>
+
+        <label className="route-sheet__notes">
+          <span className="eyebrow">Personal notes</span>
+          <textarea
+            className="field__input field__textarea"
+            rows={3}
+            value={plan.personalNotes ?? ""}
+            onChange={(e) => onPatch({ personalNotes: e.target.value })}
+            placeholder="Anything to remember about this ride…"
+          />
+        </label>
+
+        {(plan.googleMapsUrl || (savedId && rideHref)) && (
+          <div className="route-sheet__ctas">
+            {plan.googleMapsUrl && (
+              <a className="btn btn--ghost" href={plan.googleMapsUrl} target="_blank" rel="noreferrer">
+                Open in Google Maps
+              </a>
+            )}
+            {savedId && rideHref && (
+              <Link className="btn btn--accent" to={rideHref}>
+                Open Ride Mode →
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );

@@ -712,10 +712,13 @@ code {
   transform: translateY(0);
 }
 .route-sheet--half {
-  transform: translateY(42vh);
+  transform: translateY(45vh);
 }
 .route-sheet--collapsed {
-  transform: translateY(calc(92vh - 132px));
+  transform: translateY(calc(92vh - var(--head-h, 210px)));
+}
+.route-sheet__top {
+  flex: 0 0 auto;
 }
 .route-sheet__handle {
   flex: 0 0 auto;
@@ -739,8 +742,17 @@ code {
   padding: 0 1.1rem 0.5rem;
 }
 .route-sheet__title {
+  display: block;
+  width: 100%;
   font-size: 1.5rem;
   margin: 0 0 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 0;
+}
+.route-sheet__title:focus {
+  outline: none;
 }
 .route-sheet__stats {
   display: flex;
@@ -814,6 +826,142 @@ code {
   margin: 0.25rem 0 0;
   font-size: 0.9rem;
   line-height: 1.5;
+}
+.route-sheet__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.route-sheet__rating,
+.route-sheet__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+.route-sheet__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ---------- Floating map tools (FABs + panels) ---------- */
+.map-fabs {
+  position: fixed;
+  right: 0.9rem;
+  bottom: calc(13rem + env(safe-area-inset-bottom));
+  z-index: 26;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+.map-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 0.5rem 0.85rem;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.map-fab:hover {
+  background: var(--bg-elev-2);
+}
+.map-fab__icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+.map-fab__count {
+  background: var(--accent);
+  color: var(--amber-ink);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 1.3rem;
+  padding: 0.05rem 0.35rem;
+  text-align: center;
+}
+
+.map-panel__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: hsl(150 30% 4% / 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.map-panel {
+  width: min(540px, 100%);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.map-panel__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.map-panel__head h3 {
+  margin: 0;
+}
+.map-panel__close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-pill);
+}
+.map-panel__close:hover {
+  background: var(--bg-elev-2);
+  color: var(--text);
+}
+.map-panel__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+}
+/* The panel already frames its content — flatten the nested editor panel. */
+.map-panel__body .panel {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Floating save error toast over the map. */
+.map-error {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 4rem);
+  left: 0.9rem;
+  right: 0.9rem;
+  z-index: 50;
+}
+.map-error .error-panel {
+  margin: 0;
 }
 
 /* ---------- Progress ring (ride HUD / AR groundwork) ---------- */
@@ -1661,8 +1809,17 @@ code {
   .route-sheet__handle {
     display: none;
   }
+  .route-sheet__body {
+    padding-top: 0.5rem;
+  }
   .floating-chip {
     top: 5rem;
+  }
+  /* Keep the tools clear of the right-docked panel. */
+  .map-fabs {
+    right: auto;
+    left: 1rem;
+    bottom: 1.5rem;
   }
 }
 

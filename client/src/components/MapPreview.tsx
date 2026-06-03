@@ -78,7 +78,12 @@ export function MapPreview({
       zoom: 10,
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    // Keep the GL viewport in sync with the container (fixed/full-bleed layout
+    // can settle after init, leaving the map blank until it's resized).
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(containerRef.current);
     map.on("load", () => {
+      map.resize();
       map.addSource(ROUTE_SOURCE, { type: "geojson", data: lineData([]) });
       // Soft casing beneath the main line for an editorial "drawn route" feel.
       map.addLayer({
@@ -99,6 +104,7 @@ export function MapPreview({
     });
     mapRef.current = map;
     return () => {
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
       setLoaded(false);

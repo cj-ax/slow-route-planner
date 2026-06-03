@@ -3,12 +3,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { PlaceOption, PlaceType, Waypoint } from "@srp/shared";
 import { api } from "../api/client";
 import { useRoutePlan } from "../hooks/useRoutePlan";
-import { RoutePlanPanel } from "../components/RoutePlanPanel";
-import { RouteNotes } from "../components/RouteNotes";
-import { WaypointEditor } from "../components/WaypointEditor";
-import { PlaceOptions } from "../components/PlaceOptions";
 import { MapPreview } from "../components/MapPreview";
 import { RouteSheet } from "../components/RouteSheet";
+import { RouteTools } from "../components/RouteTools";
 import { ErrorPanel } from "../components/ErrorPanel";
 import { saveActiveRide } from "../ride/activeRide";
 import { shareRoute } from "../lib/shareRoute";
@@ -129,39 +126,36 @@ export function RouteDetailPage() {
         ← Saved
       </Link>
 
+      {saveError && (
+        <div className="map-error">
+          <ErrorPanel message={saveError} />
+        </div>
+      )}
+
+      <RouteTools
+        plan={plan}
+        selectedWaypointId={selectedWaypointId}
+        onSelectWaypoint={setSelectedWaypointId}
+        onChangeWaypoints={(next) => updatePlan((c) => ({ ...c, waypoints: next }))}
+        placeOptions={placeOptions}
+        placesLoading={placesLoading}
+        selectedPlaceId={selectedPlaceId}
+        onSearchPlaces={(t) => void handleSearchPlaces(t)}
+        onSelectPlace={handleSelectPlace}
+      />
+
       <RouteSheet
         plan={plan}
         selectedWaypointId={selectedWaypointId}
+        onSelectWaypoint={setSelectedWaypointId}
+        onPatch={(partial) => updatePlan((c) => ({ ...c, ...partial }))}
         onStartRide={startRide}
         onSave={() => void handleSave()}
         saving={saving}
         savedId={saved ? id : undefined}
         onShare={() => void shareRoute(plan)}
-      >
-        <RoutePlanPanel
-          plan={plan}
-          onPatch={(partial) => updatePlan((c) => ({ ...c, ...partial }))}
-          onSave={() => void handleSave()}
-          saving={saving}
-          savedId={saved ? id : undefined}
-          onSelectWaypoint={setSelectedWaypointId}
-        />
-        {saveError && <ErrorPanel message={saveError} />}
-        <RouteNotes plan={plan} />
-        <WaypointEditor
-          waypoints={plan.waypoints}
-          selectedId={selectedWaypointId}
-          onSelectWaypoint={setSelectedWaypointId}
-          onChange={(next) => updatePlan((c) => ({ ...c, waypoints: next }))}
-        />
-        <PlaceOptions
-          options={placeOptions.length ? placeOptions : plan.foodDrinkOptions}
-          selectedPlaceId={selectedPlaceId}
-          loading={placesLoading}
-          onSearch={(t) => void handleSearchPlaces(t)}
-          onSelect={handleSelectPlace}
-        />
-      </RouteSheet>
+        rideHref={id ? `/routes/${id}/ride` : undefined}
+      />
     </div>
   );
 }
