@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { EndpointIntent, RideType, RouteRequest } from "@srp/shared";
 import { api } from "../api/client";
 
@@ -23,7 +23,8 @@ interface PromptFormProps {
 }
 
 export function PromptForm({ loading, onGenerate, hero = false }: PromptFormProps) {
-  const [rawPrompt, setRawPrompt] = useState(EXAMPLE_PROMPT);
+  // Hero starts empty (small, grows with typing); the classic form keeps the example.
+  const [rawPrompt, setRawPrompt] = useState(hero ? "" : EXAMPLE_PROMPT);
   const [startLocation, setStartLocation] = useState("Wayzata, MN");
   const [rideType, setRideType] = useState<RideType>("motorcycle");
   const [endpointIntent, setEndpointIntent] = useState<EndpointIntent>("beer");
@@ -31,6 +32,15 @@ export function PromptForm({ loading, onGenerate, hero = false }: PromptFormProp
   const [avoid, setAvoid] = useState<string[]>([]);
   const [prefer, setPrefer] = useState<string[]>([]);
   const [autofilling, setAutofilling] = useState(false);
+  const heroTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Grow the hero input to fit its content (like Gemini), capped by CSS max-height.
+  useLayoutEffect(() => {
+    const el = heroTextareaRef.current;
+    if (!hero || !el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [hero, rawPrompt]);
 
   function buildRequest(): RouteRequest {
     return {
@@ -81,8 +91,9 @@ export function PromptForm({ loading, onGenerate, hero = false }: PromptFormProp
 
         <div className="prompt-hero__input">
           <textarea
+            ref={heroTextareaRef}
             className="prompt-hero__textarea"
-            rows={2}
+            rows={1}
             value={rawPrompt}
             onChange={(e) => setRawPrompt(e.target.value)}
             placeholder="Describe your route…"
@@ -90,12 +101,22 @@ export function PromptForm({ loading, onGenerate, hero = false }: PromptFormProp
           <button
             type="submit"
             className="btn btn--primary prompt-hero__go"
-            disabled={loading}
+            disabled={loading || !rawPrompt.trim()}
             aria-label="Generate route"
           >
             {loading ? "…" : "→"}
           </button>
         </div>
+
+        {!rawPrompt.trim() && (
+          <button
+            type="button"
+            className="prompt-hero__example"
+            onClick={() => setRawPrompt(EXAMPLE_PROMPT)}
+          >
+            ✨ Try an example
+          </button>
+        )}
 
         <details className="prompt-hero__options">
           <summary>Fine-tune options</summary>
