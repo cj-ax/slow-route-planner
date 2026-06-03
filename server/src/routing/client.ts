@@ -28,7 +28,14 @@ export async function getRouteGeometry(coordinates: LngLat[]): Promise<LngLat[]>
         Authorization: config.orsApiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ coordinates }),
+      body: JSON.stringify({
+        coordinates,
+        // Snap each point to the nearest road within an unlimited radius. A
+        // lake-view or park waypoint often geocodes a few hundred metres off
+        // any road; without this ORS fails the whole request (default snap
+        // radius is tiny) and the map falls back to straight lines.
+        radiuses: coordinates.map(() => -1),
+      }),
     });
 
     const data = (await res.json()) as OrsGeoJson;
