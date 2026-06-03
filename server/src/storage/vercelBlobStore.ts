@@ -30,10 +30,14 @@ export const vercelBlobStore: RouteStore = {
   },
 
   async put(plan) {
+    // OIDC or token auth is resolved by the SDK from the environment
+    // (BLOB_STORE_ID + VERCEL_OIDC_TOKEN, or BLOB_READ_WRITE_TOKEN). Routes
+    // reuse their id, so overwriting the same path needs allowOverwrite.
     await put(pathFor(plan.id as string), JSON.stringify(plan), {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
     return plan;
   },

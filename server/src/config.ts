@@ -13,7 +13,12 @@ const useMocksEnv = (process.env.USE_MOCKS ?? "true").toLowerCase() !== "false";
 const llmConfigured = Boolean(process.env.LLM_API_KEY);
 const placesConfigured = Boolean(process.env.GOOGLE_PLACES_API_KEY);
 const routingConfigured = Boolean(process.env.ORS_API_KEY);
-const blobConfigured = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+// Blob storage is available either via a static read-write token (older flow)
+// or via OIDC, where connecting a store sets BLOB_STORE_ID and Vercel injects
+// VERCEL_OIDC_TOKEN automatically. Detect either.
+const blobConfigured = Boolean(
+  process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID,
+);
 
 export const config = {
   port: Number(process.env.PORT ?? 3001),
