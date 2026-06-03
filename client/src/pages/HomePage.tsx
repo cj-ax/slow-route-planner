@@ -10,6 +10,7 @@ import { WaypointEditor } from "../components/WaypointEditor";
 import { PlaceOptions } from "../components/PlaceOptions";
 import { MapPreview } from "../components/MapPreview";
 import { ErrorPanel } from "../components/ErrorPanel";
+import { saveActiveRide } from "../ride/activeRide";
 
 function placeToWaypoint(place: PlaceOption): Waypoint {
   return {
@@ -114,15 +115,16 @@ export function HomePage() {
               onSearch={(t) => void handleSearchPlaces(t)}
               onSelect={handleSelectPlace}
             />
-            {savedId && (
-              <button
-                type="button"
-                className="btn btn--accent btn--block"
-                onClick={() => navigate(`/routes/${savedId}/ride`)}
-              >
-                Open Ride Mode →
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn btn--accent btn--block btn--lg"
+              onClick={() => {
+                saveActiveRide(plan);
+                navigate("/ride");
+              }}
+            >
+              ▶ Start Ride — live cockpit
+            </button>
           </>
         )}
       </div>

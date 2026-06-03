@@ -16,6 +16,7 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       {/* Ride mode is full-screen — outside the app shell. */}
+      <Route path="/ride" element={<RidePage />} />
       <Route path="/routes/:id/ride" element={<RidePage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

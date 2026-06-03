@@ -242,6 +242,10 @@ code {
 .btn--block {
   width: 100%;
 }
+.btn--lg {
+  padding: 0.9rem 1.2rem;
+  font-size: 1.05rem;
+}
 
 /* ---------- Chips / pills ---------- */
 .pill {
