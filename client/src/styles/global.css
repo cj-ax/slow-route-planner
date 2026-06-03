@@ -1,19 +1,73 @@
+/* =====================================================================
+   Linear-Warm Minimalist Hybrid — warm-obsidian palette, hairline layout.
+   Dark is the default (cockpit/map context); light follows the OS.
+   ===================================================================== */
 :root {
-  --bg: #0c1116;
-  --bg-elev: #141b24;
-  --bg-elev-2: #1b2531;
-  --border: #25303d;
-  --text: #e6edf3;
-  --text-muted: #8b97a5;
-  --accent: #5aa9e6;
-  --accent-2: #3ddc84;
-  --warn: #ff5d73;
-  --warn-bg: #2a1620;
-  --info-bg: #16242f;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Warm-Obsidian (dark) tokens */
+  --canvas-bg: hsl(24, 10%, 8%); /* Deep Obsidian */
+  --panel-bg: hsl(24, 8%, 12%); /* Matte Charcoal */
+  --panel-bg-2: hsl(24, 8%, 16%); /* Hover / elevated fill */
+  --text-primary: hsl(30, 15%, 92%); /* Warm Off-White */
+  --text-muted: hsl(24, 8%, 60%); /* Muted Gray-Brown */
+  --border-hairline: hsl(24, 8%, 18%); /* Sharp Dark Line */
+  --accent-ochre: hsl(37, 85%, 55%); /* Radiant Amber */
+  --accent-muted: hsl(37, 30%, 16%); /* Deep Glow Fill */
+  --accent-ink: hsl(24, 30%, 9%); /* Ink on ochre fills */
+
+  /* Semantic secondaries (warmed) */
+  --accent-2: hsl(150, 45%, 55%); /* Success / saved */
+  --accent-2-bg: hsl(150, 30%, 14%);
+  --warn: hsl(2, 75%, 62%);
+  --warn-bg: hsl(2, 40%, 14%);
+  --warn-text: hsl(8, 70%, 82%);
+  --info-bg: hsl(37, 25%, 13%);
+
+  /* Aliases kept so the rest of the sheet adapts in one place */
+  --bg: var(--canvas-bg);
+  --bg-elev: var(--panel-bg);
+  --bg-elev-2: var(--panel-bg-2);
+  --border: var(--border-hairline);
+  --text: var(--text-primary);
+  --accent: var(--accent-ochre);
+
+  /* Map controller / HUD alpha pass (DESIGN.md §4B) — theme-aware */
+  --panel-blur: color-mix(in srgb, var(--panel-bg) 78%, transparent);
+  --canvas-blur: color-mix(in srgb, var(--canvas-bg) 86%, transparent);
+
+  /* Hairline geometry — square-ish, flat, no glow */
+  --radius: 6px;
+  --radius-sm: 4px;
+  --shadow: none;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular,
+    "SF Mono", Menlo, Consolas, monospace;
+
+  font-family: var(--font-sans);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --canvas-bg: hsl(30, 20%, 98%); /* Textured Warm Paper */
+    --panel-bg: hsl(30, 15%, 95%); /* Contrast paper */
+    --panel-bg-2: hsl(30, 12%, 91%);
+    --text-primary: hsl(24, 20%, 12%); /* Deep Charcoal */
+    --text-muted: hsl(24, 10%, 45%); /* Soft Ash */
+    --border-hairline: hsl(30, 10%, 88%); /* Thin separator */
+    --accent-ochre: hsl(35, 80%, 45%); /* Transit Gold */
+    --accent-muted: hsl(35, 40%, 90%); /* Soft Highlight Fill */
+    --accent-ink: hsl(40, 60%, 97%);
+
+    --accent-2: hsl(150, 45%, 34%);
+    --accent-2-bg: hsl(150, 35%, 90%);
+    --warn: hsl(2, 70%, 48%);
+    --warn-bg: hsl(2, 55%, 95%);
+    --warn-text: hsl(2, 60%, 38%);
+    --info-bg: hsl(35, 45%, 93%);
+    color-scheme: light;
+  }
 }
 
 * {
@@ -41,11 +95,14 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Headers: mono, tight negative tracking (Linear precision) */
 h2,
 h3,
 h4 {
   margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
   font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .muted {
@@ -55,9 +112,37 @@ h4 {
 
 code {
   background: var(--bg-elev-2);
+  border: 1px solid var(--border);
   padding: 0.1em 0.35em;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
   font-size: 0.85em;
+}
+
+/* Inline ochre badge for an active map reference (DESIGN.md §4C) */
+.map-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent-ochre);
+  background: var(--accent-muted);
+  border: 1px solid var(--accent-ochre);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.45rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.map-badge::before {
+  content: "◈";
+  font-size: 0.7em;
+}
+.map-badge:hover {
+  text-decoration: none;
+  filter: brightness(1.1);
 }
 
 /* ---------- App shell ---------- */
@@ -85,7 +170,9 @@ code {
   align-items: center;
   gap: 0.5rem;
   color: var(--text);
+  font-family: var(--font-mono);
   font-weight: 700;
+  letter-spacing: -0.03em;
 }
 .brand:hover {
   text-decoration: none;
@@ -102,7 +189,13 @@ code {
   color: var(--text-muted);
   padding: 0.4rem 0.75rem;
   border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: -0.01em;
   font-weight: 500;
+}
+.app-nav a.active {
+  position: relative;
 }
 .app-nav a:hover {
   background: var(--bg-elev-2);
@@ -167,7 +260,9 @@ code {
   flex: 1;
 }
 .field__label {
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: -0.01em;
   color: var(--text-muted);
 }
 .field__input {
@@ -203,14 +298,17 @@ code {
   background: var(--bg-elev-2);
   color: var(--text);
   border-radius: var(--radius-sm);
-  padding: 0.6rem 1rem;
-  font-size: 0.95rem;
+  padding: 0.55rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: filter 0.12s ease, background 0.12s ease;
+  transition: filter 0.12s ease, background 0.12s ease, border-color 0.12s ease;
 }
 .btn:hover:not(:disabled) {
-  filter: brightness(1.15);
+  filter: brightness(1.12);
+  border-color: var(--accent);
   text-decoration: none;
 }
 .btn:disabled {
@@ -220,12 +318,15 @@ code {
 .btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #06121d;
+  color: var(--accent-ink);
+}
+.btn--primary:hover:not(:disabled) {
+  border-color: var(--accent);
 }
 .btn--accent {
   background: var(--accent-2);
   border-color: var(--accent-2);
-  color: #06210f;
+  color: var(--accent-ink);
 }
 .btn--ghost {
   background: transparent;
@@ -253,25 +354,29 @@ code {
   align-items: center;
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.6rem;
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: -0.01em;
   color: var(--text-muted);
 }
 .chip {
   display: inline-flex;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.6rem;
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: -0.01em;
   font-weight: 600;
 }
 .chip--avoid {
   background: var(--warn-bg);
-  color: #ffb3bf;
+  color: var(--warn-text);
 }
 .chip--prefer {
-  background: #14291d;
-  color: #8be3ab;
+  background: var(--accent-2-bg);
+  color: var(--accent-2);
 }
 .chip-summary {
   display: flex;
@@ -311,8 +416,10 @@ code {
   border: none;
   border-bottom: 1px dashed var(--border);
   color: var(--text);
-  font-size: 1.3rem;
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
   font-weight: 700;
+  letter-spacing: -0.03em;
   width: 100%;
   padding: 0.2rem 0;
   margin-bottom: 0.5rem;
@@ -323,7 +430,9 @@ code {
 }
 .route-plan-panel__summary {
   color: var(--text-muted);
-  line-height: 1.5;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  line-height: 1.55;
   margin: 0 0 0.75rem;
 }
 .route-plan-panel__od {
@@ -358,7 +467,7 @@ code {
   line-height: 1;
 }
 .rating__star.is-active {
-  color: #ffc857;
+  color: var(--accent-ochre);
 }
 
 /* ---------- Route notes ---------- */
@@ -375,23 +484,25 @@ code {
   padding: 0.85rem 1rem;
 }
 .note-block--warn {
-  border-color: #5a2230;
+  border-color: var(--warn);
   background: var(--warn-bg);
 }
 .note-block__title {
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 .note-block--warn .note-block__title {
-  color: #ffb3bf;
+  color: var(--warn-text);
 }
 .note-block__list {
   margin: 0;
   padding-left: 1.1rem;
-  line-height: 1.5;
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  line-height: 1.55;
+  font-size: 0.84rem;
 }
 
 /* ---------- Waypoint list ---------- */
@@ -445,7 +556,9 @@ code {
   width: 100%;
 }
 .waypoint__label {
+  font-family: var(--font-mono);
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .waypoint__query {
   color: var(--text-muted);
@@ -475,9 +588,10 @@ code {
 }
 .waypoint__reason {
   margin: 0;
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 .waypoint__controls {
   display: flex;
@@ -500,7 +614,7 @@ code {
   cursor: not-allowed;
 }
 .waypoint__controls button.is-active {
-  border-color: #ffc857;
+  border-color: var(--accent-ochre);
 }
 .waypoint__controls button.danger {
   color: var(--warn);
@@ -547,9 +661,10 @@ code {
 }
 .place-card__reason {
   margin: 0.15rem 0 0;
-  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 /* ---------- Map preview ---------- */
@@ -570,25 +685,29 @@ code {
   bottom: 0.75rem;
   left: 0.75rem;
   right: 0.75rem;
-  background: rgba(12, 17, 22, 0.85);
+  background: var(--panel-blur);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   color: var(--text-muted);
 }
 .map-legend {
   position: absolute;
   top: 0.75rem;
   left: 0.75rem;
-  background: rgba(12, 17, 22, 0.85);
+  background: var(--panel-blur);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.6rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
 }
 .map-legend__item {
   display: flex;
@@ -599,6 +718,46 @@ code {
   width: 0.7rem;
   height: 0.7rem;
   border-radius: 50%;
+}
+
+/* ---------- MapLibre controls (flat, hairline, blur — DESIGN.md §4C) ---------- */
+.maplibregl-ctrl-group {
+  background: var(--panel-blur);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  overflow: hidden;
+}
+.maplibregl-ctrl-group button {
+  width: 30px;
+  height: 30px;
+  background-color: transparent;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border);
+}
+.maplibregl-ctrl-group button:hover {
+  background-color: var(--accent-muted);
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(var(--ctrl-icon-invert, 1)) hue-rotate(180deg);
+}
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: var(--panel-blur);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-sm);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--text-muted);
+}
+:root {
+  --ctrl-icon-invert: 1;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --ctrl-icon-invert: 0;
+  }
 }
 
 /* ---------- Map markers (DOM) ---------- */
@@ -704,8 +863,9 @@ code {
 }
 .saved-card__summary {
   color: var(--text-muted);
-  font-size: 0.88rem;
-  line-height: 1.45;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -719,7 +879,7 @@ code {
   gap: 0.4rem;
 }
 .saved-card__rating {
-  color: #ffc857;
+  color: var(--accent-ochre);
 }
 .saved-card__actions {
   display: flex;
@@ -729,8 +889,8 @@ code {
 /* ---------- Error panel ---------- */
 .error-panel {
   background: var(--warn-bg);
-  border: 1px solid #5a2230;
-  color: #ffd2da;
+  border: 1px solid var(--warn);
+  color: var(--warn-text);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.8rem;
   display: flex;
@@ -768,14 +928,16 @@ code {
   color: var(--text);
 }
 .status-pill {
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.7rem;
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: -0.01em;
   font-weight: 600;
 }
 .status-pill--on {
-  background: #14291d;
-  color: #8be3ab;
+  background: var(--accent-2-bg);
+  color: var(--accent-2);
 }
 .status-pill--off {
   background: var(--bg-elev-2);
@@ -834,22 +996,26 @@ code {
 }
 
 .ride-stat {
-  background: rgba(12, 17, 22, 0.82);
+  background: var(--panel-blur);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.5rem 0.9rem;
   display: flex;
   flex-direction: column;
   min-width: 4.5rem;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(12px);
 }
 .ride-stat__value {
+  font-family: var(--font-mono);
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .ride-stat__label {
-  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -865,8 +1031,8 @@ code {
 }
 .ride-exit {
   margin-left: auto;
-  background: rgba(12, 17, 22, 0.82);
-  backdrop-filter: blur(6px);
+  background: var(--panel-blur);
+  backdrop-filter: blur(12px);
 }
 
 .ride-warning {
@@ -891,15 +1057,17 @@ code {
   left: 0.75rem;
   right: 0.75rem;
   z-index: 6;
-  background: rgba(12, 17, 22, 0.92);
+  background: var(--panel-blur);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.8rem;
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
 }
 .ride-notice--warn {
-  border-color: #5a2230;
-  color: #ffd2da;
+  border-color: var(--warn);
+  color: var(--warn-text);
 }
 .ride-notice--muted {
   color: var(--text-muted);
@@ -908,7 +1076,7 @@ code {
 }
 
 .ride-next {
-  background: rgba(12, 17, 22, 0.88);
+  background: var(--panel-blur);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.7rem 1rem;
@@ -916,14 +1084,17 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(12px);
 }
 .ride-next__label {
   font-size: 1rem;
 }
 .ride-next__dist {
+  font-family: var(--font-mono);
   font-size: 1.4rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   color: var(--accent);
   white-space: nowrap;
 }
@@ -949,7 +1120,8 @@ code {
   padding: 0.2rem 0;
 }
 .ride-debug {
-  background: rgba(12, 17, 22, 0.92);
+  background: var(--panel-blur);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.8rem;
@@ -957,7 +1129,8 @@ code {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
 }
 .ride-debug > div {
   display: flex;

@@ -82,7 +82,7 @@ export function MapPreview({
         type: "line",
         source: ROUTE_SOURCE,
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#5aa9e6", "line-width": 4, "line-opacity": 0.85 },
+        paint: { "line-color": "#e8a33d", "line-width": 4, "line-opacity": 0.9 },
       });
       setLoaded(true);
     });

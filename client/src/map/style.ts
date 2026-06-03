@@ -27,7 +27,7 @@ const DARK_RASTER_FALLBACK: StyleSpecification = {
     {
       id: "background",
       type: "background",
-      paint: { "background-color": "#0c1116" },
+      paint: { "background-color": "#171411" },
     },
     {
       id: "carto-dark",

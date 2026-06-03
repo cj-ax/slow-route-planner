@@ -99,6 +99,7 @@ export function HomePage() {
               onSave={() => void handleSave()}
               saving={saving}
               savedId={savedId}
+              onSelectWaypoint={setSelectedWaypointId}
             />
             {saveError && <ErrorPanel message={saveError} />}
             <RouteNotes plan={plan} />

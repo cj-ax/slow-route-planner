@@ -7,6 +7,7 @@ interface RoutePlanPanelProps {
   onSave: () => void;
   saving: boolean;
   savedId?: string;
+  onSelectWaypoint?: (id: string) => void;
 }
 
 export function RoutePlanPanel({
@@ -15,7 +16,13 @@ export function RoutePlanPanel({
   onSave,
   saving,
   savedId,
+  onSelectWaypoint,
 }: RoutePlanPanelProps) {
+  const startWp = plan.waypoints[0];
+  const destWp =
+    [...plan.waypoints].reverse().find((w) => w.purpose === "destination") ??
+    plan.waypoints[plan.waypoints.length - 1];
+
   return (
     <section className="panel route-plan-panel">
       <input
@@ -26,8 +33,22 @@ export function RoutePlanPanel({
       />
       <p className="route-plan-panel__summary">{plan.summary}</p>
       <div className="route-plan-panel__od">
-        <span className="pill">From: {plan.start}</span>
-        {plan.destination && <span className="pill">To: {plan.destination}</span>}
+        <button
+          type="button"
+          className="map-badge"
+          onClick={() => startWp && onSelectWaypoint?.(startWp.id)}
+        >
+          From: {plan.start}
+        </button>
+        {plan.destination && (
+          <button
+            type="button"
+            className="map-badge"
+            onClick={() => destWp && onSelectWaypoint?.(destWp.id)}
+          >
+            To: {plan.destination}
+          </button>
+        )}
       </div>
 
       <div className="field-row">
