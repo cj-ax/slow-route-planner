@@ -256,14 +256,20 @@ function reorderForFlow(waypoints: Waypoint[], isLoop: boolean): Waypoint[] {
   const unlocated = middle.filter((w) => w.lat === undefined || w.lng === undefined);
   if (located.length < 2) return waypoints;
 
-  // Demote outliers: anything far beyond the typical distance from the start is
-  // almost always a mis-geocode. Strip its coords so it shows as "no pin"
-  // (kept in the list) instead of dragging the line across the metro.
-  const dists = located.map((w) => distM(start, w)).sort((a, b) => a - b);
-  const median = dists[Math.floor(dists.length / 2)] || 0;
-  const limit = Math.max(median * 3, 12000);
+  // Demote off-feature outliers using distance from the centroid. The centroid
+  // sits mid-feature (e.g. the middle of the lake), so genuine perimeter stops
+  // all cluster at ~one radius; a point well beyond that is a mis-geocode or an
+  // off-lake pick. Strip its coords so it shows as "no pin" (kept in the list)
+  // rather than dragging the line out across the metro. Distance-from-start is
+  // a poor signal here because the start sits on the rim.
+  const c = centroidOf(located);
+  const cdist = (w: Waypoint) =>
+    calculateDistanceMeters(c, { lat: w.lat as number, lng: w.lng as number });
+  const cds = located.map(cdist).sort((a, b) => a - b);
+  const cmed = cds[Math.floor(cds.length / 2)] || 0;
+  const climit = Math.max(cmed * 2, 6000);
   for (const w of located) {
-    if (distM(start, w) > limit) {
+    if (cdist(w) > climit) {
       w.lat = undefined;
       w.lng = undefined;
     }
