@@ -7,7 +7,7 @@ import type {
   Waypoint,
   WaypointPurpose,
 } from "@srp/shared";
-import { buildGoogleMapsUrl } from "@srp/shared";
+import { buildGoogleMapsUrl, calculateDistanceMeters } from "@srp/shared";
 import { config, llmMockMode } from "../config.js";
 import { createMockRoutePlan } from "../mock/mockRoutePlan.js";
 import { geocode } from "../routing/geocode.js";
@@ -136,6 +136,51 @@ async function geocodeWaypoints(plan: RoutePlan, startText: string): Promise<voi
 }
 
 /**
+ * Reorder the middle waypoints into a smooth nearest-neighbour path so the
+ * road line flows instead of zig-zagging when the model's ordering is poor.
+ * Keeps the start first and the destination last; un-located waypoints keep
+ * their relative order at the end of the middle section.
+ */
+function reorderForFlow(waypoints: Waypoint[]): Waypoint[] {
+  if (waypoints.length < 4) return waypoints;
+  const start = waypoints[0];
+  if (start.lat === undefined || start.lng === undefined) return waypoints;
+
+  const lastIsDest = waypoints[waypoints.length - 1]?.purpose === "destination";
+  const end = lastIsDest ? waypoints[waypoints.length - 1] : undefined;
+  const fixed = new Set([start.id, ...(end ? [end.id] : [])]);
+
+  const middle = waypoints.filter((w) => !fixed.has(w.id));
+  const located = middle.filter((w) => w.lat !== undefined && w.lng !== undefined);
+  const unlocated = middle.filter((w) => w.lat === undefined || w.lng === undefined);
+  if (located.length < 2) return waypoints;
+
+  const ordered: Waypoint[] = [start];
+  let current = start;
+  const remaining = [...located];
+  while (remaining.length) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = calculateDistanceMeters(
+        { lat: current.lat as number, lng: current.lng as number },
+        { lat: remaining[i].lat as number, lng: remaining[i].lng as number },
+      );
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    current = remaining[bestIdx];
+    ordered.push(current);
+    remaining.splice(bestIdx, 1);
+  }
+  ordered.push(...unlocated);
+  if (end) ordered.push(end);
+  return ordered;
+}
+
+/**
  * Real route generation via the Anthropic Messages API. The static planner
  * prompt is cached (cache_control); adaptive thinking keeps the visible text a
  * clean JSON object. LLM waypoints carry no coordinates, so we geocode them
@@ -147,7 +192,11 @@ async function callRouteLlm(request: RouteRequest): Promise<RoutePlan> {
   const message = await client.messages.create({
     model,
     max_tokens: 8000,
-    thinking: { type: "adaptive" },
+    // Thinking disabled: route planning is well-specified by the system prompt,
+    // and a deterministic reorder fixes geographic flow — so we trade the long
+    // adaptive-thinking latency (which would time out on Vercel) for a fast,
+    // clean JSON response.
+    thinking: { type: "disabled" },
     system: [
       {
         type: "text",
@@ -161,6 +210,7 @@ async function callRouteLlm(request: RouteRequest): Promise<RoutePlan> {
   console.log(`[llm] route generated via ${message.model}`);
   const plan = mapLlmJsonToPlan(extractJson(message));
   await geocodeWaypoints(plan, request.startLocation);
+  plan.waypoints = reorderForFlow(plan.waypoints);
   plan.googleMapsUrl = buildGoogleMapsUrl(plan);
   return plan;
 }

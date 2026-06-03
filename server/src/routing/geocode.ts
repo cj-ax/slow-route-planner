@@ -29,6 +29,11 @@ export async function geocode(
   if (focus) {
     url.searchParams.set("focus.point.lon", String(focus.lng));
     url.searchParams.set("focus.point.lat", String(focus.lat));
+    // Constrain results to the ride area so a generic query can't resolve to a
+    // far-off town. 60 km is generous enough for longer regional rides.
+    url.searchParams.set("boundary.circle.lon", String(focus.lng));
+    url.searchParams.set("boundary.circle.lat", String(focus.lat));
+    url.searchParams.set("boundary.circle.radius", "60");
   }
 
   try {
