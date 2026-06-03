@@ -8,6 +8,9 @@ import { useRouteGeometry } from "../hooks/useRouteGeometry";
 
 const ROUTE_SOURCE = "srp-route";
 const ROUTE_LAYER = "srp-route-line";
+const ROUTE_CASING = "srp-route-casing";
+/** Amber route line — matches --amber-500 in the design tokens. */
+const ROUTE_COLOR = "#f5a623";
 
 function lineData(coords: [number, number][]): any {
   return {
@@ -77,12 +80,20 @@ export function MapPreview({
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.on("load", () => {
       map.addSource(ROUTE_SOURCE, { type: "geojson", data: lineData([]) });
+      // Soft casing beneath the main line for an editorial "drawn route" feel.
+      map.addLayer({
+        id: ROUTE_CASING,
+        type: "line",
+        source: ROUTE_SOURCE,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": ROUTE_COLOR, "line-width": 11, "line-opacity": 0.22, "line-blur": 1 },
+      });
       map.addLayer({
         id: ROUTE_LAYER,
         type: "line",
         source: ROUTE_SOURCE,
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#e8a33d", "line-width": 4, "line-opacity": 0.9 },
+        paint: { "line-color": ROUTE_COLOR, "line-width": 5, "line-opacity": 0.95 },
       });
       setLoaded(true);
     });

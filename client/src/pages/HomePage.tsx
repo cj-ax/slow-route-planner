@@ -9,8 +9,10 @@ import { RouteNotes } from "../components/RouteNotes";
 import { WaypointEditor } from "../components/WaypointEditor";
 import { PlaceOptions } from "../components/PlaceOptions";
 import { MapPreview } from "../components/MapPreview";
+import { RouteSheet } from "../components/RouteSheet";
 import { ErrorPanel } from "../components/ErrorPanel";
 import { saveActiveRide } from "../ride/activeRide";
+import { shareRoute } from "../lib/shareRoute";
 
 function placeToWaypoint(place: PlaceOption): Waypoint {
   return {
@@ -85,58 +87,66 @@ export function HomePage() {
 
   const selectedPlaceId = plan?.foodDrinkOptions.find((o) => o.selected)?.id;
 
-  return (
-    <div className="page home-page">
-      <div className="home-page__left">
-        <PromptForm loading={loading} onGenerate={(req) => void generate(req)} />
+  function startRide() {
+    if (!plan) return;
+    saveActiveRide(plan);
+    navigate("/ride");
+  }
+
+  // No route yet — show the AI-prompt hero.
+  if (!plan) {
+    return (
+      <div className="page hero-page">
+        <PromptForm hero loading={loading} onGenerate={(req) => void generate(req)} />
         {error && <ErrorPanel message={error} />}
-
-        {plan && (
-          <>
-            <RoutePlanPanel
-              plan={plan}
-              onPatch={(partial) => updatePlan((c) => ({ ...c, ...partial }))}
-              onSave={() => void handleSave()}
-              saving={saving}
-              savedId={savedId}
-              onSelectWaypoint={setSelectedWaypointId}
-            />
-            {saveError && <ErrorPanel message={saveError} />}
-            <RouteNotes plan={plan} />
-            <WaypointEditor
-              waypoints={plan.waypoints}
-              selectedId={selectedWaypointId}
-              onSelectWaypoint={setSelectedWaypointId}
-              onChange={(next) => updatePlan((c) => ({ ...c, waypoints: next }))}
-            />
-            <PlaceOptions
-              options={placeOptions.length ? placeOptions : plan.foodDrinkOptions}
-              selectedPlaceId={selectedPlaceId}
-              loading={placesLoading}
-              onSearch={(t) => void handleSearchPlaces(t)}
-              onSelect={handleSelectPlace}
-            />
-            <button
-              type="button"
-              className="btn btn--accent btn--block btn--lg"
-              onClick={() => {
-                saveActiveRide(plan);
-                navigate("/ride");
-              }}
-            >
-              ▶ Start Ride — live cockpit
-            </button>
-          </>
-        )}
       </div>
+    );
+  }
 
-      <div className="home-page__right">
+  // Route exists — full-bleed map with the route sheet over it.
+  return (
+    <div className="page map-page">
+      <div className="map-stage">
         <MapPreview
           plan={plan}
           selectedWaypointId={selectedWaypointId}
           onSelectWaypoint={setSelectedWaypointId}
         />
       </div>
+
+      <RouteSheet
+        plan={plan}
+        selectedWaypointId={selectedWaypointId}
+        onStartRide={startRide}
+        onSave={() => void handleSave()}
+        saving={saving}
+        savedId={savedId}
+        onShare={() => void shareRoute(plan)}
+      >
+        <RoutePlanPanel
+          plan={plan}
+          onPatch={(partial) => updatePlan((c) => ({ ...c, ...partial }))}
+          onSave={() => void handleSave()}
+          saving={saving}
+          savedId={savedId}
+          onSelectWaypoint={setSelectedWaypointId}
+        />
+        {saveError && <ErrorPanel message={saveError} />}
+        <RouteNotes plan={plan} />
+        <WaypointEditor
+          waypoints={plan.waypoints}
+          selectedId={selectedWaypointId}
+          onSelectWaypoint={setSelectedWaypointId}
+          onChange={(next) => updatePlan((c) => ({ ...c, waypoints: next }))}
+        />
+        <PlaceOptions
+          options={placeOptions.length ? placeOptions : plan.foodDrinkOptions}
+          selectedPlaceId={selectedPlaceId}
+          loading={placesLoading}
+          onSearch={(t) => void handleSearchPlaces(t)}
+          onSelect={handleSelectPlace}
+        />
+      </RouteSheet>
     </div>
   );
 }

@@ -20,9 +20,13 @@ import { useLiveLocation } from "../hooks/useLiveLocation";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { loadRideConfig } from "../config/ride";
 import { createLiveLocationElement, setLiveLocationHeading } from "./LiveLocationMarker";
+import { ProgressRing } from "./ProgressRing";
 
 const ROUTE_SOURCE = "ride-route";
 const ROUTE_LAYER = "ride-route-line";
+const ROUTE_CASING = "ride-route-casing";
+/** Amber route line — matches --amber-500 in the design tokens. */
+const ROUTE_COLOR = "#f5a623";
 
 function lineData(coords: [number, number][]): any {
   return {
@@ -128,11 +132,18 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
     map.on("load", () => {
       map.addSource(ROUTE_SOURCE, { type: "geojson", data: lineData(route.lineCoords) });
       map.addLayer({
+        id: ROUTE_CASING,
+        type: "line",
+        source: ROUTE_SOURCE,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": ROUTE_COLOR, "line-width": 13, "line-opacity": 0.22, "line-blur": 1 },
+      });
+      map.addLayer({
         id: ROUTE_LAYER,
         type: "line",
         source: ROUTE_SOURCE,
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#5aa9e6", "line-width": 5, "line-opacity": 0.9 },
+        paint: { "line-color": ROUTE_COLOR, "line-width": 6, "line-opacity": 0.95 },
       });
       const el = createLiveLocationElement();
       liveElRef.current = el;
@@ -224,6 +235,16 @@ export function RideMode({ plan }: { plan: RoutePlan }) {
 
       {/* Top status strip */}
       <div className="ride-hud ride-hud--top">
+        <div className="ride-stat ride-stat--ring">
+          <ProgressRing
+            progress={route.markers.length ? reachedIds.size / route.markers.length : 0}
+            size={56}
+            stroke={5}
+            arcColor={status.isOffRoute ? "var(--amber-500)" : "var(--lime-400)"}
+            label={`${reachedIds.size}/${route.markers.length}`}
+          />
+          <span className="ride-stat__label">Waypoints</span>
+        </div>
         <div className="ride-stat">
           <span className="ride-stat__value">{formatSpeed(live.currentLocation?.speedMps)}</span>
           <span className="ride-stat__label">Speed</span>

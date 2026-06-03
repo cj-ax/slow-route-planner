@@ -18,9 +18,11 @@ const ENDPOINT_INTENTS: EndpointIntent[] = [
 interface PromptFormProps {
   loading: boolean;
   onGenerate: (request: RouteRequest) => void;
+  /** Hero layout: big headline + pill input, advanced fields collapsed. */
+  hero?: boolean;
 }
 
-export function PromptForm({ loading, onGenerate }: PromptFormProps) {
+export function PromptForm({ loading, onGenerate, hero = false }: PromptFormProps) {
   const [rawPrompt, setRawPrompt] = useState(EXAMPLE_PROMPT);
   const [startLocation, setStartLocation] = useState("Wayzata, MN");
   const [rideType, setRideType] = useState<RideType>("motorcycle");
@@ -65,6 +67,115 @@ export function PromptForm({ loading, onGenerate }: PromptFormProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     onGenerate(buildRequest());
+  }
+
+  if (hero) {
+    return (
+      <form className="prompt-hero" onSubmit={handleSubmit}>
+        <p className="eyebrow prompt-hero__eyebrow">Trailhead · AI route planner</p>
+        <h1 className="prompt-hero__title">
+          Let AI map your way,
+          <br />
+          you just enjoy the ride.
+        </h1>
+
+        <div className="prompt-hero__input">
+          <textarea
+            className="prompt-hero__textarea"
+            rows={2}
+            value={rawPrompt}
+            onChange={(e) => setRawPrompt(e.target.value)}
+            placeholder="Describe your route…"
+          />
+          <button
+            type="submit"
+            className="btn btn--primary prompt-hero__go"
+            disabled={loading}
+            aria-label="Generate route"
+          >
+            {loading ? "…" : "→"}
+          </button>
+        </div>
+
+        <details className="prompt-hero__options">
+          <summary>Fine-tune options</summary>
+          <div className="field-row">
+            <label className="field">
+              <span className="field__label">Start location</span>
+              <input
+                className="field__input"
+                value={startLocation}
+                onChange={(e) => setStartLocation(e.target.value)}
+                placeholder="Town, address, or landmark"
+              />
+            </label>
+            <label className="field">
+              <span className="field__label">Ride type</span>
+              <select
+                className="field__input"
+                value={rideType}
+                onChange={(e) => setRideType(e.target.value as RideType)}
+              >
+                {RIDE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="field-row">
+            <label className="field">
+              <span className="field__label">End with</span>
+              <select
+                className="field__input"
+                value={endpointIntent}
+                onChange={(e) => setEndpointIntent(e.target.value as EndpointIntent)}
+              >
+                {ENDPOINT_INTENTS.map((t) => (
+                  <option key={t} value={t}>
+                    {t.replace("_", " ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span className="field__label">Target minutes (optional)</span>
+              <input
+                className="field__input"
+                type="number"
+                min={15}
+                max={600}
+                value={targetDuration}
+                onChange={(e) => setTargetDuration(e.target.value)}
+              />
+            </label>
+          </div>
+          {(avoid.length > 0 || prefer.length > 0) && (
+            <div className="chip-summary">
+              {avoid.map((a) => (
+                <span key={`a-${a}`} className="chip chip--avoid">
+                  avoid: {a}
+                </span>
+              ))}
+              {prefer.map((p) => (
+                <span key={`p-${p}`} className="chip chip--prefer">
+                  prefer: {p}
+                </span>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={handleAutofill}
+            disabled={autofilling || loading}
+          >
+            {autofilling ? "Reading…" : "Auto-fill from prompt"}
+          </button>
+        </details>
+      </form>
+    );
   }
 
   return (

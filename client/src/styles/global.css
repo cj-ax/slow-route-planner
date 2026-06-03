@@ -1,26 +1,49 @@
 /* =====================================================================
-   Linear-Warm Minimalist Hybrid — warm-obsidian palette, hairline layout.
-   Dark is the default (cockpit/map context); light follows the OS.
+   Trailhead — forest-green editorial system, outdoorsy & premium.
+   Deep forest is the default (app shell / hero / sheet / cockpit);
+   warm cream paper follows the OS light scheme (map context).
    ===================================================================== */
 :root {
-  /* Warm-Obsidian (dark) tokens */
-  --canvas-bg: hsl(24, 10%, 8%); /* Deep Obsidian */
-  --panel-bg: hsl(24, 8%, 12%); /* Matte Charcoal */
-  --panel-bg-2: hsl(24, 8%, 16%); /* Hover / elevated fill */
-  --text-primary: hsl(30, 15%, 92%); /* Warm Off-White */
-  --text-muted: hsl(24, 8%, 60%); /* Muted Gray-Brown */
-  --border-hairline: hsl(24, 8%, 18%); /* Sharp Dark Line */
-  --accent-ochre: hsl(37, 85%, 55%); /* Radiant Amber */
-  --accent-muted: hsl(37, 30%, 16%); /* Deep Glow Fill */
-  --accent-ink: hsl(24, 30%, 9%); /* Ink on ochre fills */
+  /* Forest brand (default) */
+  --forest-900: hsl(150, 28%, 9%); /* deepest canvas */
+  --forest-800: hsl(150, 24%, 13%); /* panel / sheet surface */
+  --forest-700: hsl(150, 20%, 18%); /* elevated / hover */
+  --forest-600: hsl(148, 18%, 24%); /* borders on green */
+  --olive-500: hsl(96, 22%, 38%); /* sage mid for gradients */
 
-  /* Semantic secondaries (warmed) */
-  --accent-2: hsl(150, 45%, 55%); /* Success / saved */
-  --accent-2-bg: hsl(150, 30%, 14%);
-  --warn: hsl(2, 75%, 62%);
-  --warn-bg: hsl(2, 40%, 14%);
-  --warn-text: hsl(8, 70%, 82%);
-  --info-bg: hsl(37, 25%, 13%);
+  --canvas-bg: var(--forest-900);
+  --panel-bg: var(--forest-800);
+  --panel-bg-2: var(--forest-700);
+  --text-primary: hsl(60, 30%, 96%); /* warm cream text on green */
+  --text-muted: hsl(120, 8%, 68%);
+  --border-hairline: var(--forest-600);
+
+  /* Cream surfaces (light/map context) */
+  --cream-100: hsl(45, 40%, 96%);
+  --cream-200: hsl(42, 32%, 90%);
+  --ink-900: hsl(150, 18%, 12%);
+
+  /* Accents */
+  --amber-500: hsl(36, 92%, 56%); /* energy: route line, route pill */
+  --amber-600: hsl(32, 88%, 48%); /* hover / on cream */
+  --amber-ink: hsl(30, 40%, 10%); /* ink on amber fills */
+  --amber-muted: hsl(36, 50%, 18%); /* amber glow fill on green */
+
+  --lime-400: hsl(78, 70%, 58%); /* secondary: progress ring */
+  --lime-muted: hsl(96, 30%, 16%);
+
+  /* Backward-compatible accent aliases */
+  --accent-ochre: var(--amber-500);
+  --accent-muted: var(--amber-muted);
+  --accent-ink: var(--amber-ink);
+
+  /* Semantic secondaries */
+  --accent-2: var(--lime-400); /* success / saved / next */
+  --accent-2-bg: var(--lime-muted);
+  --warn: hsl(8, 78%, 62%);
+  --warn-bg: hsl(8, 40%, 16%);
+  --warn-text: hsl(10, 75%, 84%);
+  --info-bg: hsl(150, 20%, 16%);
 
   /* Aliases kept so the rest of the sheet adapts in one place */
   --bg: var(--canvas-bg);
@@ -28,21 +51,40 @@
   --bg-elev-2: var(--panel-bg-2);
   --border: var(--border-hairline);
   --text: var(--text-primary);
-  --accent: var(--accent-ochre);
+  --accent: var(--amber-500);
 
-  /* Map controller / HUD alpha pass (DESIGN.md §4B) — theme-aware */
-  --panel-blur: color-mix(in srgb, var(--panel-bg) 78%, transparent);
-  --canvas-blur: color-mix(in srgb, var(--canvas-bg) 86%, transparent);
+  /* Glass + gradients (sage on translucent) */
+  --glass-bg: color-mix(in srgb, var(--forest-800) 72%, transparent);
+  --glass-strong: color-mix(in srgb, var(--forest-900) 84%, transparent);
+  --glass-border: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --grad-bar: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--forest-700) 88%, transparent),
+    color-mix(in srgb, var(--forest-900) 72%, transparent)
+  );
+  --grad-hero: radial-gradient(
+    120% 80% at 50% -10%,
+    var(--olive-500) 0%,
+    var(--forest-800) 45%,
+    var(--forest-900) 100%
+  );
+  /* Old blur token names kept alive for existing rules */
+  --panel-blur: var(--glass-bg);
+  --canvas-blur: var(--glass-strong);
 
-  /* Hairline geometry — square-ish, flat, no glow */
-  --radius: 6px;
-  --radius-sm: 4px;
-  --shadow: none;
+  /* Geometry — large radii + pills */
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+  --shadow: 0 8px 30px hsl(150, 40%, 4%, 0.45);
+  --shadow-sheet: 0 -10px 40px hsl(150, 40%, 4%, 0.5);
 
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular,
-    "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "Bricolage Grotesque", "Space Grotesk", system-ui, sans-serif;
+  --font-sans: "Familjen Grotesk", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, monospace;
 
   font-family: var(--font-sans);
   color-scheme: dark;
@@ -50,22 +92,43 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --canvas-bg: hsl(30, 20%, 98%); /* Textured Warm Paper */
-    --panel-bg: hsl(30, 15%, 95%); /* Contrast paper */
-    --panel-bg-2: hsl(30, 12%, 91%);
-    --text-primary: hsl(24, 20%, 12%); /* Deep Charcoal */
-    --text-muted: hsl(24, 10%, 45%); /* Soft Ash */
-    --border-hairline: hsl(30, 10%, 88%); /* Thin separator */
-    --accent-ochre: hsl(35, 80%, 45%); /* Transit Gold */
-    --accent-muted: hsl(35, 40%, 90%); /* Soft Highlight Fill */
-    --accent-ink: hsl(40, 60%, 97%);
+    --canvas-bg: var(--cream-100); /* warm paper */
+    --panel-bg: hsl(0, 0%, 100%);
+    --panel-bg-2: var(--cream-200);
+    --text-primary: var(--ink-900);
+    --text-muted: hsl(150, 10%, 38%);
+    --border-hairline: hsl(45, 20%, 84%);
 
-    --accent-2: hsl(150, 45%, 34%);
-    --accent-2-bg: hsl(150, 35%, 90%);
-    --warn: hsl(2, 70%, 48%);
-    --warn-bg: hsl(2, 55%, 95%);
-    --warn-text: hsl(2, 60%, 38%);
-    --info-bg: hsl(35, 45%, 93%);
+    --amber-500: hsl(34, 90%, 48%);
+    --amber-600: hsl(30, 88%, 42%);
+    --amber-ink: hsl(45, 60%, 98%);
+    --amber-muted: hsl(38, 70%, 90%);
+
+    --lime-400: hsl(82, 55%, 42%);
+    --lime-muted: hsl(82, 45%, 90%);
+
+    --accent-2: var(--lime-400);
+    --accent-2-bg: var(--lime-muted);
+    --warn: hsl(6, 78%, 52%);
+    --warn-bg: hsl(8, 70%, 95%);
+    --warn-text: hsl(6, 65%, 40%);
+    --info-bg: hsl(96, 30%, 92%);
+
+    --glass-bg: color-mix(in srgb, white 72%, transparent);
+    --glass-strong: color-mix(in srgb, var(--cream-100) 85%, transparent);
+    --glass-border: color-mix(in srgb, var(--ink-900) 10%, transparent);
+    --grad-bar: linear-gradient(
+      180deg,
+      color-mix(in srgb, white 90%, transparent),
+      color-mix(in srgb, var(--cream-100) 70%, transparent)
+    );
+    --grad-hero: radial-gradient(
+      120% 80% at 50% -10%,
+      hsl(96, 35%, 88%) 0%,
+      var(--cream-100) 55%
+    );
+    --shadow: 0 8px 30px hsl(150, 20%, 30%, 0.12);
+    --shadow-sheet: 0 -10px 40px hsl(150, 20%, 30%, 0.16);
     color-scheme: light;
   }
 }
@@ -95,14 +158,34 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Headers: mono, tight negative tracking (Linear precision) */
+/* Headers: humanist grotesque, tight tracking */
 h2,
 h3,
 h4 {
   margin: 0 0 0.5rem;
-  font-family: var(--font-mono);
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+/* Display headline — bold grotesque, tight leading, real personality */
+h1,
+.h-display {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 0.98;
+}
+
+/* Uppercase tracked-out micro-label */
+.eyebrow {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .muted {
@@ -155,14 +238,40 @@ code {
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
-  background: var(--bg-elev);
-  border-bottom: 1px solid var(--border);
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  padding-top: max(0.7rem, env(safe-area-inset-top));
+  background: var(--grad-bar);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 40;
+}
+
+/* Hamburger */
+.app-header__menu {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0 0.55rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.app-header__menu span {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text);
+}
+.app-header__menu:hover {
+  background: var(--bg-elev-2);
 }
 
 .brand {
@@ -170,40 +279,80 @@ code {
   align-items: center;
   gap: 0.5rem;
   color: var(--text);
-  font-family: var(--font-mono);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
   letter-spacing: -0.03em;
 }
 .brand:hover {
   text-decoration: none;
 }
 .brand__mark {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
+}
+
+.app-header__avatar {
+  margin-left: auto;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: radial-gradient(circle at 30% 30%, var(--olive-500), var(--forest-700));
+  border: 1px solid var(--glass-border);
 }
 
 .app-nav {
   display: flex;
   gap: 0.25rem;
+  margin-left: 0.5rem;
 }
 .app-nav a {
   color: var(--text-muted);
-  padding: 0.4rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
   letter-spacing: -0.01em;
-  font-weight: 500;
-}
-.app-nav a.active {
-  position: relative;
+  font-weight: 600;
 }
 .app-nav a:hover {
   background: var(--bg-elev-2);
   text-decoration: none;
 }
 .app-nav a.active {
-  color: var(--text);
-  background: var(--bg-elev-2);
+  color: var(--amber-ink);
+  background: var(--accent);
+}
+
+/* Mobile: nav collapses into a drawer toggled by the hamburger. */
+@media (max-width: 899px) {
+  .app-nav {
+    position: absolute;
+    top: 100%;
+    left: 0.75rem;
+    right: 0.75rem;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0.4rem 0 0;
+    padding: 0.5rem;
+    background: var(--glass-strong);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .app-nav--open {
+    display: flex;
+  }
+}
+
+/* Desktop: hamburger hidden, nav inline. */
+@media (min-width: 900px) {
+  .app-header__menu {
+    display: none;
+  }
 }
 
 .app-main {
@@ -212,6 +361,12 @@ code {
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
+}
+/* Map pages run full-bleed — the map + sheet are fixed, so drop padding. */
+.app-main:has(.map-page),
+.app-main:has(.hero-page) {
+  padding: 0;
+  max-width: none;
 }
 
 /* ---------- Banners / notices ---------- */
@@ -222,6 +377,8 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  position: relative;
+  z-index: 38;
 }
 .banner--info {
   background: var(--info-bg);
@@ -297,10 +454,10 @@ code {
   border: 1px solid var(--border);
   background: var(--bg-elev-2);
   color: var(--text);
-  border-radius: var(--radius-sm);
-  padding: 0.55rem 0.9rem;
-  font-family: var(--font-mono);
-  font-size: 0.88rem;
+  border-radius: var(--radius-pill);
+  padding: 0.55rem 0.95rem;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   cursor: pointer;
@@ -354,19 +511,19 @@ code {
   align-items: center;
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.2rem 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.7rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
   letter-spacing: -0.01em;
   color: var(--text-muted);
 }
 .chip {
   display: inline-flex;
-  border-radius: var(--radius-sm);
-  padding: 0.2rem 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.7rem;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
   letter-spacing: -0.01em;
   font-weight: 600;
 }
@@ -401,6 +558,272 @@ code {
 .home-page__right {
   position: sticky;
   top: 5rem;
+}
+
+/* ---------- Hero (AI prompt landing) ---------- */
+.hero-page {
+  min-height: calc(100dvh - 3.6rem);
+  background: var(--grad-hero);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.prompt-hero {
+  width: 100%;
+  max-width: 640px;
+  padding: clamp(1.5rem, 6vh, 4rem) 1.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.prompt-hero__eyebrow {
+  margin: 0;
+  color: var(--lime-400);
+}
+.prompt-hero__title {
+  font-size: clamp(2.1rem, 7vw, 3.4rem);
+  margin: 0 0 0.5rem;
+}
+.prompt-hero__input {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  box-shadow: var(--shadow);
+}
+.prompt-hero__textarea {
+  flex: 1;
+  resize: none;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.4;
+  padding: 0.4rem 0;
+}
+.prompt-hero__textarea:focus {
+  outline: none;
+}
+.prompt-hero__go {
+  flex: 0 0 auto;
+  width: 2.8rem;
+  height: 2.8rem;
+  padding: 0;
+  font-size: 1.2rem;
+}
+.prompt-hero__options {
+  margin-top: 0.5rem;
+  background: color-mix(in srgb, var(--panel-bg) 60%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.9rem;
+}
+.prompt-hero__options > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.3rem 0;
+  list-style: none;
+}
+.prompt-hero__options > summary::-webkit-details-marker {
+  display: none;
+}
+.prompt-hero__options[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
+/* ---------- Full-bleed map stage + floating controls ---------- */
+.map-page {
+  position: relative;
+}
+.map-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.map-stage .map-preview {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+.floating-chip {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 4.2rem);
+  left: 0.9rem;
+  z-index: 25;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.floating-chip:hover {
+  text-decoration: none;
+  background: var(--bg-elev-2);
+}
+
+/* ---------- Route sheet (draggable bottom sheet) ---------- */
+.route-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-top: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sheet);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.route-sheet--expanded {
+  transform: translateY(0);
+}
+.route-sheet--half {
+  transform: translateY(42vh);
+}
+.route-sheet--collapsed {
+  transform: translateY(calc(92vh - 132px));
+}
+.route-sheet__handle {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  padding: 0.6rem 0 0.4rem;
+  cursor: grab;
+  touch-action: none;
+}
+.route-sheet__handle:active {
+  cursor: grabbing;
+}
+.route-sheet__grabber {
+  width: 2.6rem;
+  height: 0.3rem;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.route-sheet__header {
+  flex: 0 0 auto;
+  padding: 0 1.1rem 0.5rem;
+}
+.route-sheet__title {
+  font-size: 1.5rem;
+  margin: 0 0 0.6rem;
+}
+.route-sheet__stats {
+  display: flex;
+  gap: 1.4rem;
+}
+.route-sheet__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.route-sheet__stat strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.route-sheet__actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.4rem 1.1rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.route-sheet__actions .btn {
+  flex: 1;
+}
+.route-sheet__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.9rem 1.1rem calc(2rem + env(safe-area-inset-bottom));
+}
+.route-sheet__summary {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.route-sheet__deepdive {
+  background: var(--accent-muted);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.8rem 0.9rem;
+  margin-bottom: 1rem;
+}
+.route-sheet__deepdive-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.route-sheet__dot {
+  flex: 0 0 auto;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+}
+.route-sheet__deepdive-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+.route-sheet__deepdive-meta {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.route-sheet__why {
+  margin-top: 0.7rem;
+}
+.route-sheet__why p {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ---------- Progress ring (ride HUD / AR groundwork) ---------- */
+.progress-ring {
+  position: relative;
+  flex: 0 0 auto;
+}
+.progress-ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.progress-ring__label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.progress-ring__sub {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
 }
 
 /* ---------- Prompt form ---------- */
@@ -685,29 +1108,31 @@ code {
   bottom: 0.75rem;
   left: 0.75rem;
   right: 0.75rem;
-  background: var(--panel-blur);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.7rem;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 .map-legend {
   position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  background: var(--panel-blur);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.6rem;
+  top: calc(env(safe-area-inset-top) + 7rem);
+  left: 0.9rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
+  gap: 0.3rem;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
 }
 .map-legend__item {
   display: flex;
@@ -778,7 +1203,7 @@ code {
   content: attr(data-n);
 }
 .map-marker {
-  color: #06121d;
+  color: var(--amber-ink);
   font-weight: 700;
   font-size: 0.8rem;
 }
@@ -996,14 +1421,20 @@ code {
 }
 
 .ride-stat {
-  background: var(--panel-blur);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.5rem 0.9rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 0.55rem 0.95rem;
   display: flex;
   flex-direction: column;
   min-width: 4.5rem;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.ride-stat--ring {
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.7rem;
 }
 .ride-stat__value {
   font-family: var(--font-mono);
@@ -1021,18 +1452,19 @@ code {
   letter-spacing: 0.05em;
 }
 .ride-stat--good {
-  border-color: #1f6b3a;
+  border-color: var(--lime-400);
 }
 .ride-stat--okay {
-  border-color: #8a6d1f;
+  border-color: var(--amber-500);
 }
 .ride-stat--poor {
-  border-color: #5a2230;
+  border-color: var(--warn);
 }
 .ride-exit {
   margin-left: auto;
-  background: var(--panel-blur);
-  backdrop-filter: blur(12px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .ride-warning {
@@ -1076,15 +1508,16 @@ code {
 }
 
 .ride-next {
-  background: var(--panel-blur);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.7rem 1rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 0.8rem 1.1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .ride-next__label {
   font-size: 1rem;
@@ -1154,7 +1587,7 @@ code {
   border-radius: 50%;
   background: var(--marker-color, var(--accent));
   border: 2px solid rgba(255, 255, 255, 0.85);
-  color: #06121d;
+  color: var(--amber-ink);
   font-weight: 700;
   font-size: 0.8rem;
   display: flex;
@@ -1188,5 +1621,39 @@ code {
   .field-row {
     flex-direction: column;
     gap: 0;
+  }
+}
+
+/* Desktop: the route sheet docks as a scrollable right-hand panel. */
+@media (min-width: 900px) {
+  .route-sheet {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    height: auto;
+    width: min(440px, 38vw);
+    transform: none !important;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    border-top: none;
+    border-left: 1px solid var(--glass-border);
+    box-shadow: var(--shadow);
+    padding-top: 4.5rem;
+  }
+  .route-sheet__handle {
+    display: none;
+  }
+  .floating-chip {
+    top: 5rem;
+  }
+}
+
+/* Honor reduced-motion: no sheet glide or ring animation. */
+@media (prefers-reduced-motion: reduce) {
+  .route-sheet {
+    transition: none;
+  }
+  .progress-ring circle {
+    transition: none !important;
   }
 }

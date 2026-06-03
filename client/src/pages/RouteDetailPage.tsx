@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import type { PlaceOption, PlaceType, Waypoint } from "@srp/shared";
 import { api } from "../api/client";
 import { useRoutePlan } from "../hooks/useRoutePlan";
@@ -8,7 +8,10 @@ import { RouteNotes } from "../components/RouteNotes";
 import { WaypointEditor } from "../components/WaypointEditor";
 import { PlaceOptions } from "../components/PlaceOptions";
 import { MapPreview } from "../components/MapPreview";
+import { RouteSheet } from "../components/RouteSheet";
 import { ErrorPanel } from "../components/ErrorPanel";
+import { saveActiveRide } from "../ride/activeRide";
+import { shareRoute } from "../lib/shareRoute";
 
 function placeToWaypoint(place: PlaceOption): Waypoint {
   return {
@@ -25,6 +28,7 @@ function placeToWaypoint(place: PlaceOption): Waypoint {
 
 export function RouteDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { plan, setPlan, updatePlan } = useRoutePlan();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string>();
@@ -105,18 +109,42 @@ export function RouteDetailPage() {
 
   const selectedPlaceId = plan.foodDrinkOptions.find((o) => o.selected)?.id;
 
+  function startRide() {
+    if (!plan) return;
+    saveActiveRide(plan);
+    navigate(id ? `/routes/${id}/ride` : "/ride");
+  }
+
   return (
-    <div className="page home-page">
-      <div className="home-page__left">
-        <Link to="/routes" className="back-link">
-          ← Saved routes
-        </Link>
+    <div className="page map-page">
+      <div className="map-stage">
+        <MapPreview
+          plan={plan}
+          selectedWaypointId={selectedWaypointId}
+          onSelectWaypoint={setSelectedWaypointId}
+        />
+      </div>
+
+      <Link to="/routes" className="floating-chip">
+        ← Saved
+      </Link>
+
+      <RouteSheet
+        plan={plan}
+        selectedWaypointId={selectedWaypointId}
+        onStartRide={startRide}
+        onSave={() => void handleSave()}
+        saving={saving}
+        savedId={saved ? id : undefined}
+        onShare={() => void shareRoute(plan)}
+      >
         <RoutePlanPanel
           plan={plan}
           onPatch={(partial) => updatePlan((c) => ({ ...c, ...partial }))}
           onSave={() => void handleSave()}
           saving={saving}
           savedId={saved ? id : undefined}
+          onSelectWaypoint={setSelectedWaypointId}
         />
         {saveError && <ErrorPanel message={saveError} />}
         <RouteNotes plan={plan} />
@@ -133,14 +161,7 @@ export function RouteDetailPage() {
           onSearch={(t) => void handleSearchPlaces(t)}
           onSelect={handleSelectPlace}
         />
-      </div>
-      <div className="home-page__right">
-        <MapPreview
-          plan={plan}
-          selectedWaypointId={selectedWaypointId}
-          onSelectWaypoint={setSelectedWaypointId}
-        />
-      </div>
+      </RouteSheet>
     </div>
   );
 }
