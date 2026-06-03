@@ -10,10 +10,11 @@
     "client"
   ],
   "scripts": {
-    "dev": "concurrently -n server,client -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev": "npm run build -w @srp/shared && concurrently -n server,client -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "npm run dev -w @srp/server",
     "dev:client": "npm run dev -w @srp/client",
-    "build": "npm run build -w @srp/client",
+    "build:shared": "npm run build -w @srp/shared",
+    "build": "npm run build -w @srp/shared && npm run build -w @srp/client",
     "typecheck": "tsc -p shared/tsconfig.json --noEmit && tsc -p server/tsconfig.json --noEmit && tsc -p client/tsconfig.json --noEmit && tsc -p api/tsconfig.json --noEmit",
     "lint": "eslint .",
     "start": "npm run dev"
