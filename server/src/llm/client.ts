@@ -128,10 +128,33 @@ function extractJson(message: Anthropic.Message): LlmRoutePlanJson {
 }
 
 /**
+ * Candidate query strings to try for a waypoint, most specific first. Models
+ * often emit descriptive queries like "Spring Park — Lord Fletcher's Corner"
+ * that the geocoder can't match whole, so we also try the label and each side
+ * of an em/en-dash split.
+ */
+function geocodeCandidates(w: Waypoint): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const add = (s?: string) => {
+    const t = (s ?? "").trim();
+    if (t && !seen.has(t.toLowerCase())) {
+      seen.add(t.toLowerCase());
+      out.push(t);
+    }
+  };
+  add(w.query);
+  add(w.label);
+  for (const part of (w.query || "").split(/—|–| - /)) add(part);
+  return out;
+}
+
+/**
  * Best-effort: resolve each waypoint's map query to coordinates via ORS
  * geocoding so LLM-generated routes render on the map and follow roads. The
- * ride start anchors the search so ambiguous street names resolve nearby.
- * Failures leave a waypoint un-located rather than aborting the plan.
+ * ride start anchors the search so ambiguous street names resolve nearby. Tries
+ * a few query forms before giving up; failures leave a waypoint un-located
+ * rather than aborting the plan.
  */
 async function geocodeWaypoints(plan: RoutePlan, startText: string): Promise<void> {
   if (!config.routingConfigured) return;
@@ -139,10 +162,13 @@ async function geocodeWaypoints(plan: RoutePlan, startText: string): Promise<voi
   await Promise.all(
     plan.waypoints.map(async (w) => {
       if (w.lat !== undefined && w.lng !== undefined) return;
-      const found = await geocode(w.query || w.label, anchor);
-      if (found) {
-        w.lat = found.lat;
-        w.lng = found.lng;
+      for (const candidate of geocodeCandidates(w)) {
+        const found = await geocode(candidate, anchor);
+        if (found) {
+          w.lat = found.lat;
+          w.lng = found.lng;
+          return;
+        }
       }
     }),
   );
@@ -218,6 +244,39 @@ function centroidOf(pts: Waypoint[]): LatLng {
 }
 
 /**
+ * Robust center: component-wise median lat/lng. Unlike the mean, a single
+ * far-off outlier (e.g. a stop that geocoded into Minneapolis) can't drag this
+ * away from the true feature center — so it's the right anchor for deciding
+ * which stops are genuinely off-feature.
+ */
+function robustCenter(pts: Waypoint[]): LatLng {
+  const median = (xs: number[]) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)];
+  };
+  return {
+    lat: median(pts.map((p) => p.lat as number)),
+    lng: median(pts.map((p) => p.lng as number)),
+  };
+}
+
+/**
+ * Identify located waypoints that sit well beyond the feature: more than
+ * `factor`x the median distance from the robust center. Genuine perimeter
+ * stops cluster at ~one radius; off-feature picks stand out.
+ */
+function offFeatureOutliers(located: Waypoint[], factor = 1.8): Waypoint[] {
+  if (located.length < 4) return [];
+  const c = robustCenter(located);
+  const dist = (w: Waypoint) =>
+    calculateDistanceMeters(c, { lat: w.lat as number, lng: w.lng as number });
+  const ds = located.map(dist).sort((a, b) => a - b);
+  const med = ds[Math.floor(ds.length / 2)] || 0;
+  const limit = Math.max(med * factor, 6000);
+  return located.filter((w) => dist(w) > limit);
+}
+
+/**
  * Order located waypoints as a clean ring: sort by polar angle around the
  * centroid, starting just past the start's angle and sweeping one direction.
  * This forces the route to go all the way around (covering every side) without
@@ -256,23 +315,12 @@ function reorderForFlow(waypoints: Waypoint[], isLoop: boolean): Waypoint[] {
   const unlocated = middle.filter((w) => w.lat === undefined || w.lng === undefined);
   if (located.length < 2) return waypoints;
 
-  // Demote off-feature outliers using distance from the centroid. The centroid
-  // sits mid-feature (e.g. the middle of the lake), so genuine perimeter stops
-  // all cluster at ~one radius; a point well beyond that is a mis-geocode or an
-  // off-lake pick. Strip its coords so it shows as "no pin" (kept in the list)
-  // rather than dragging the line out across the metro. Distance-from-start is
-  // a poor signal here because the start sits on the rim.
-  const c = centroidOf(located);
-  const cdist = (w: Waypoint) =>
-    calculateDistanceMeters(c, { lat: w.lat as number, lng: w.lng as number });
-  const cds = located.map(cdist).sort((a, b) => a - b);
-  const cmed = cds[Math.floor(cds.length / 2)] || 0;
-  const climit = Math.max(cmed * 2, 6000);
-  for (const w of located) {
-    if (cdist(w) > climit) {
-      w.lat = undefined;
-      w.lng = undefined;
-    }
+  // Demote off-feature outliers (robust median center, so the outlier can't
+  // hide by dragging the center toward itself). Strip coords so they show as
+  // "no pin" rather than dragging the line out across the metro.
+  for (const w of offFeatureOutliers(located)) {
+    w.lat = undefined;
+    w.lng = undefined;
   }
   located = located.filter((w) => w.lat !== undefined && w.lng !== undefined);
   const demoted = middle.filter(
@@ -293,15 +341,13 @@ function reorderForFlow(waypoints: Waypoint[], isLoop: boolean): Waypoint[] {
   return [start, ...orderedMiddle, ...tail, ...(end ? [end] : [])];
 }
 
-/**
- * Real route generation via the Anthropic Messages API. The static planner
- * prompt is cached (cache_control); adaptive thinking keeps the visible text a
- * clean JSON object. LLM waypoints carry no coordinates, so we geocode them
- * before returning.
- */
-async function callRouteLlm(request: RouteRequest): Promise<RoutePlan> {
-  const client = new Anthropic({ apiKey: config.llmApiKey });
-  const model = config.llmModel || DEFAULT_MODEL;
+/** One Messages API call → geocoded RoutePlan (no reordering yet). */
+async function requestPlan(
+  client: Anthropic,
+  model: string,
+  userMessage: string,
+  startLocation: string,
+): Promise<RoutePlan> {
   const message = await client.messages.create({
     model,
     max_tokens: 8000,
@@ -311,20 +357,70 @@ async function callRouteLlm(request: RouteRequest): Promise<RoutePlan> {
     // clean JSON response.
     thinking: { type: "disabled" },
     system: [
-      {
-        type: "text",
-        text: ROUTE_PLANNER_SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
+      { type: "text", text: ROUTE_PLANNER_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
     ],
-    messages: [{ role: "user", content: buildUserMessage(request) }],
+    messages: [{ role: "user", content: userMessage }],
   });
-
   console.log(`[llm] route generated via ${message.model}`);
   const plan = mapLlmJsonToPlan(extractJson(message));
   // Anchor geocoding on the model's own start (e.g. "Victoria, MN") so it works
   // even when the rider didn't fill the start field, and biases stops nearby.
-  await geocodeWaypoints(plan, plan.start || request.startLocation);
+  await geocodeWaypoints(plan, plan.start || startLocation);
+  return plan;
+}
+
+/** Human-readable description of off-feature stops, for retry feedback. */
+function describeGeoIssues(plan: RoutePlan): string[] {
+  const located = plan.waypoints.filter((w) => w.lat !== undefined && w.lng !== undefined);
+  if (located.length < 4) return [];
+  const c = robustCenter(located);
+  return offFeatureOutliers(located).map((w) => {
+    const km = (
+      calculateDistanceMeters(c, { lat: w.lat as number, lng: w.lng as number }) / 1000
+    ).toFixed(0);
+    return `"${w.label}" landed about ${km} km from the center of the area — too far off the feature.`;
+  });
+}
+
+/**
+ * Real route generation. Generates a plan, then validates that the stops
+ * actually sit on the named feature; if some landed far off (a frequent
+ * failure mode where a stop drifts toward the nearest city), it re-asks the
+ * model ONCE with that specific feedback and keeps whichever attempt is
+ * cleaner. A deterministic reorder + outlier demotion is the final safety net.
+ */
+async function callRouteLlm(request: RouteRequest): Promise<RoutePlan> {
+  const client = new Anthropic({ apiKey: config.llmApiKey });
+  const model = config.llmModel || DEFAULT_MODEL;
+  const startedAt = Date.now();
+
+  let plan = await requestPlan(client, model, buildUserMessage(request), request.startLocation);
+  let issues = describeGeoIssues(plan);
+
+  // Only retry if the first attempt was fast enough that a second call won't
+  // blow the serverless timeout. If not, the deterministic outlier demotion
+  // below still removes the off-feature stops (it just can't replace them).
+  if (issues.length && Date.now() - startedAt < 25000) {
+    console.log(`[llm] retrying — off-feature stops: ${issues.length}`);
+    const retryMessage = [
+      buildUserMessage(request),
+      "",
+      "Your previous attempt had problems:",
+      ...issues.map((i) => `- ${i}`),
+      "Regenerate the FULL plan. Every waypoint must sit on roads immediately bordering the named feature (within ~2-3 miles of it), distributed evenly around all sides. Do not drift toward the nearest city.",
+    ].join("\n");
+    try {
+      const retry = await requestPlan(client, model, retryMessage, request.startLocation);
+      const retryIssues = describeGeoIssues(retry);
+      if (retryIssues.length <= issues.length) {
+        plan = retry;
+        issues = retryIssues;
+      }
+    } catch (err) {
+      console.warn("[llm] retry failed, keeping first attempt:", (err as Error).message);
+    }
+  }
+
   const isLoop =
     isLoopRequest(request.rawPrompt) ||
     (Boolean(plan.destination) &&
