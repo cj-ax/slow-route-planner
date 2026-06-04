@@ -1,12 +1,11 @@
 # Meander — Brand & Design Brief
 
-Hand this to any design tool (or designer) to keep new branding consistent with
-the live app. Values are the source of truth from `client/src/styles/global.css`.
+The visual system already live on the app, to keep new work consistent. Values
+are the source of truth from `client/src/styles/global.css`.
 
 **Personality:** outdoorsy, premium, calm, editorial. Nature-forward (deep
 forest green) with warm energy (amber). "Slow scenic ride," not "sporty GPS" —
-confident but unhurried. The name is a winding river bend; the product plans
-winding scenic loops.
+confident but unhurried.
 
 ---
 
@@ -75,17 +74,6 @@ https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,50
   `currentColor`.
 - **Imagery:** photography-forward — motion-blurred riders, lakes, tree-lined
   roads, golden hour.
-
----
-
-## Logo / wordmark direction
-
-- Wordmark in **Bricolage Grotesque** (700–800), tight tracking; cream on forest.
-- Mark idea: a **meandering line / route ribbon** (an amber winding path) that
-  can double as an "M," a stylized river bend, or a contour line — ties directly
-  to the product (scenic loops) and the name (a river meander). End it with a
-  single **amber** dot/pin.
-- Keep it monochrome-friendly: must read as cream-on-forest and forest-on-cream.
 
 ---
 
