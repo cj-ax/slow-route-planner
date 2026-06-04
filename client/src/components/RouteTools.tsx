@@ -4,16 +4,9 @@ import type { PlaceOption, PlaceType, RoutePlan, Waypoint } from "@srp/shared";
 import { WaypointEditor } from "./WaypointEditor";
 import { RouteNotes } from "./RouteNotes";
 import { PlaceOptions } from "./PlaceOptions";
+import { Icon } from "./Icon";
 
 type Panel = "waypoints" | "places" | "notes";
-
-function Icon({ path }: { path: string }) {
-  return (
-    <svg className="mdi" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-      <path d={path} fill="currentColor" />
-    </svg>
-  );
-}
 
 interface RouteToolsProps {
   plan: RoutePlan;

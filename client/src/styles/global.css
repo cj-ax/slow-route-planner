@@ -847,6 +847,81 @@ code {
   gap: 0.5rem;
 }
 
+/* ---------- Weather (conditions chip + advisory) ---------- */
+.weather {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 4.2rem);
+  right: 0.9rem;
+  z-index: 27;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  max-width: 75vw;
+}
+.weather-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 0.7rem;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.weather-chip__temp {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.weather-chip__sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.weather-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.weather-alert .mdi {
+  flex: 0 0 auto;
+}
+.weather-alert__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.weather-alert--extreme,
+.weather-alert--severe {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border: 1px solid var(--warn);
+}
+.weather-alert--moderate {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.weather-alert--minor,
+.weather-alert--unknown {
+  background: var(--glass-bg);
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+}
+
 /* ---------- Floating map tools (FABs + panels) ---------- */
 .map-fabs {
   position: fixed;
@@ -1834,6 +1909,9 @@ code {
     right: auto;
     left: 1rem;
     bottom: 1.5rem;
+  }
+  .weather {
+    right: calc(min(440px, 38vw) + 1rem);
   }
 }
 

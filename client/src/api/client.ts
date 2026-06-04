@@ -6,6 +6,7 @@ import type {
   RoutePlan,
   RouteRequest,
   SearchPlacesRequest,
+  WeatherResponse,
 } from "@srp/shared";
 
 // Empty base => same-origin "/api" (production on Vercel).
@@ -69,4 +70,6 @@ export const api = {
     }),
   deleteRoute: (id: string) =>
     request<void>(`/routes/${id}`, { method: "DELETE" }),
+  weather: (lat: number, lng: number) =>
+    request<WeatherResponse>(`/weather?lat=${lat}&lng=${lng}`),
 };

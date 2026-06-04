@@ -6,6 +6,7 @@ import { useRoutePlan } from "../hooks/useRoutePlan";
 import { MapPreview } from "../components/MapPreview";
 import { RouteSheet } from "../components/RouteSheet";
 import { RouteTools } from "../components/RouteTools";
+import { WeatherChip } from "../components/WeatherChip";
 import { ErrorPanel } from "../components/ErrorPanel";
 import { saveActiveRide } from "../ride/activeRide";
 import { shareRoute } from "../lib/shareRoute";
@@ -125,6 +126,8 @@ export function RouteDetailPage() {
       <Link to="/routes" className="floating-chip">
         ← Saved
       </Link>
+
+      <WeatherChip plan={plan} />
 
       {saveError && (
         <div className="map-error">

@@ -7,6 +7,7 @@ import { PromptForm } from "../components/PromptForm";
 import { MapPreview } from "../components/MapPreview";
 import { RouteSheet } from "../components/RouteSheet";
 import { RouteTools } from "../components/RouteTools";
+import { WeatherChip } from "../components/WeatherChip";
 import { ErrorPanel } from "../components/ErrorPanel";
 import { saveActiveRide } from "../ride/activeRide";
 import { shareRoute } from "../lib/shareRoute";
@@ -110,6 +111,8 @@ export function HomePage() {
           onSelectWaypoint={setSelectedWaypointId}
         />
       </div>
+
+      <WeatherChip plan={plan} />
 
       {saveError && (
         <div className="map-error">

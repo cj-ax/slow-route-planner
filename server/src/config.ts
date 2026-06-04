@@ -13,6 +13,11 @@ const useMocksEnv = (process.env.USE_MOCKS ?? "true").toLowerCase() !== "false";
 const llmConfigured = Boolean(process.env.LLM_API_KEY);
 const placesConfigured = Boolean(process.env.GOOGLE_PLACES_API_KEY);
 const routingConfigured = Boolean(process.env.ORS_API_KEY);
+// Weather uses the Google Maps Platform Weather API. It can share the Places
+// key (same Google Cloud project) — fall back to it when no dedicated key set.
+const googleWeatherApiKey =
+  process.env.GOOGLE_WEATHER_API_KEY || process.env.GOOGLE_PLACES_API_KEY || "";
+const weatherConfigured = Boolean(googleWeatherApiKey);
 // Blob storage is available either via a static read-write token (older flow)
 // or via OIDC, where connecting a store sets BLOB_STORE_ID and Vercel injects
 // VERCEL_OIDC_TOKEN automatically. Detect either.
@@ -26,10 +31,12 @@ export const config = {
   llmConfigured,
   placesConfigured,
   routingConfigured,
+  weatherConfigured,
   blobConfigured,
   llmApiKey: process.env.LLM_API_KEY ?? "",
   llmModel: process.env.LLM_MODEL ?? "",
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
+  googleWeatherApiKey,
   orsApiKey: process.env.ORS_API_KEY ?? "",
   storageBackend: (blobConfigured ? "vercel-blob" : "json-file") as
     | "vercel-blob"

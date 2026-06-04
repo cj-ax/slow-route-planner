@@ -6,6 +6,7 @@ import generateRoutePlan from "./routes/generateRoutePlan.js";
 import searchPlaces from "./routes/searchPlaces.js";
 import routeGeometry from "./routes/routeGeometry.js";
 import savedRoutes from "./routes/savedRoutes.js";
+import weather from "./routes/weather.js";
 
 export function createApp() {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp() {
   api.use(searchPlaces);
   api.use(routeGeometry);
   api.use(savedRoutes);
+  api.use(weather);
   app.use("/api", api);
 
   // JSON 404 for unknown API routes.
