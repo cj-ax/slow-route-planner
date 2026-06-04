@@ -237,11 +237,12 @@ code {
 }
 
 .app-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.7rem 1rem;
-  padding-top: max(0.7rem, env(safe-area-inset-top));
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  padding-top: max(0.55rem, env(safe-area-inset-top));
   background: var(--grad-bar);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -249,6 +250,15 @@ code {
   position: sticky;
   top: 0;
   z-index: 40;
+}
+.app-header__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-self: start;
+}
+.app-header__right {
+  justify-self: end;
 }
 
 /* Hamburger */
@@ -278,6 +288,7 @@ code {
 .brand {
   display: inline-flex;
   align-items: center;
+  justify-self: center;
   color: var(--text);
 }
 .brand:hover {
@@ -303,20 +314,9 @@ code {
   overflow: visible;
 }
 
-.app-header__avatar {
-  margin-left: auto;
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 50%;
-  flex: 0 0 auto;
-  background: radial-gradient(circle at 30% 30%, var(--olive-500), var(--forest-700));
-  border: 1px solid var(--glass-border);
-}
-
 .app-nav {
   display: flex;
   gap: 0.25rem;
-  margin-left: 0.5rem;
 }
 .app-nav a {
   color: var(--text-muted);

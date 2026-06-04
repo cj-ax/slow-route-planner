@@ -9,35 +9,37 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <button
-          type="button"
-          className="app-header__menu"
-          aria-label="Menu"
-          aria-expanded={navOpen}
-          onClick={() => setNavOpen((o) => !o)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
+        <div className="app-header__left">
+          <button
+            type="button"
+            className="app-header__menu"
+            aria-label="Menu"
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((o) => !o)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+
+          <nav className={`app-nav${navOpen ? " app-nav--open" : ""}`}>
+            <NavLink to="/" end onClick={() => setNavOpen(false)}>
+              Plan
+            </NavLink>
+            <NavLink to="/routes" onClick={() => setNavOpen(false)}>
+              Saved
+            </NavLink>
+            <NavLink to="/settings" onClick={() => setNavOpen(false)}>
+              Settings
+            </NavLink>
+          </nav>
+        </div>
 
         <Link to="/" className="brand" onClick={() => setNavOpen(false)} aria-label="Meander">
-          <Wordmark size={26} />
+          <Wordmark size={32} />
         </Link>
 
-        <nav className={`app-nav${navOpen ? " app-nav--open" : ""}`}>
-          <NavLink to="/" end onClick={() => setNavOpen(false)}>
-            Plan
-          </NavLink>
-          <NavLink to="/routes" onClick={() => setNavOpen(false)}>
-            Saved
-          </NavLink>
-          <NavLink to="/settings" onClick={() => setNavOpen(false)}>
-            Settings
-          </NavLink>
-        </nav>
-
-        <span className="app-header__avatar" aria-hidden="true" />
+        <div className="app-header__right" aria-hidden="true" />
       </header>
       <ApiStatusBanner />
       <main className="app-main">
