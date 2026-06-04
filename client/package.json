@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@mdi/js": "^7.4.47",
     "@srp/shared": "*",
     "maplibre-gl": "^4.7.1",
     "react": "^18.3.1",

@@ -1,10 +1,19 @@
 import { useState } from "react";
+import { mdiClipboardTextOutline, mdiCoffee, mdiMapMarkerMultiple } from "@mdi/js";
 import type { PlaceOption, PlaceType, RoutePlan, Waypoint } from "@srp/shared";
 import { WaypointEditor } from "./WaypointEditor";
 import { RouteNotes } from "./RouteNotes";
 import { PlaceOptions } from "./PlaceOptions";
 
 type Panel = "waypoints" | "places" | "notes";
+
+function Icon({ path }: { path: string }) {
+  return (
+    <svg className="mdi" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <path d={path} fill="currentColor" />
+    </svg>
+  );
+}
 
 interface RouteToolsProps {
   plan: RoutePlan;
@@ -46,20 +55,37 @@ export function RouteTools({
   return (
     <>
       <div className="map-fabs">
-        <button type="button" className="map-fab" onClick={() => setPanel("waypoints")}>
-          <span className="map-fab__icon" aria-hidden="true">📍</span>
-          <span className="map-fab__label">Waypoints</span>
-          <span className="map-fab__count">{plan.waypoints.length}</span>
+        <button
+          type="button"
+          className="map-fab"
+          aria-label="Waypoints"
+          title="Waypoints"
+          onClick={() => setPanel("waypoints")}
+        >
+          <Icon path={mdiMapMarkerMultiple} />
+          {plan.waypoints.length > 0 && (
+            <span className="map-fab__badge">{plan.waypoints.length}</span>
+          )}
         </button>
-        <button type="button" className="map-fab" onClick={() => setPanel("places")}>
-          <span className="map-fab__icon" aria-hidden="true">☕</span>
-          <span className="map-fab__label">Places</span>
+        <button
+          type="button"
+          className="map-fab"
+          aria-label="Endpoint options"
+          title="Places"
+          onClick={() => setPanel("places")}
+        >
+          <Icon path={mdiCoffee} />
         </button>
         {notesCount > 0 && (
-          <button type="button" className="map-fab" onClick={() => setPanel("notes")}>
-            <span className="map-fab__icon" aria-hidden="true">📋</span>
-            <span className="map-fab__label">Notes</span>
-            <span className="map-fab__count">{notesCount}</span>
+          <button
+            type="button"
+            className="map-fab"
+            aria-label="Route notes & checks"
+            title="Notes"
+            onClick={() => setPanel("notes")}
+          >
+            <Icon path={mdiClipboardTextOutline} />
+            <span className="map-fab__badge">{notesCount}</span>
           </button>
         )}
       </div>
