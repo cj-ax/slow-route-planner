@@ -82,7 +82,7 @@ export function PromptForm({ loading, onGenerate, hero = false }: PromptFormProp
   if (hero) {
     return (
       <form className="prompt-hero" onSubmit={handleSubmit}>
-        <p className="eyebrow prompt-hero__eyebrow">Trailhead · AI route planner</p>
+        <p className="eyebrow prompt-hero__eyebrow">Slow scenic routes · AI route planner</p>
         <h1 className="prompt-hero__title">
           Let AI map your way,
           <br />

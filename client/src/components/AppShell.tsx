@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { ApiStatusBanner } from "./ApiStatusBanner";
+import { Wordmark } from "./Wordmark";
 
 export function AppShell() {
   const [navOpen, setNavOpen] = useState(false);
@@ -20,9 +21,8 @@ export function AppShell() {
           <span />
         </button>
 
-        <Link to="/" className="brand" onClick={() => setNavOpen(false)}>
-          <span className="brand__mark">⛰</span>
-          <span className="brand__name">Trailhead</span>
+        <Link to="/" className="brand" onClick={() => setNavOpen(false)} aria-label="Meander">
+          <Wordmark size={26} />
         </Link>
 
         <nav className={`app-nav${navOpen ? " app-nav--open" : ""}`}>
