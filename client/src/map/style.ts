@@ -87,7 +87,11 @@ export function buildStyle(base: BaseLayerId, studyArea: GeoJSON.Polygon): Style
       source: LAND_SOURCE,
       paint: {
         "line-color": agencyColorExpr() as never,
-        "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 3.5, ["interpolate", ["linear"], ["zoom"], 7, 0.6, 13, 2]],
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          7, ["case", ["boolean", ["feature-state", "selected"], false], 3, 0.6],
+          13, ["case", ["boolean", ["feature-state", "selected"], false], 4, 2],
+        ],
       },
     },
     {

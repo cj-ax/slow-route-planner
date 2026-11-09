@@ -1,9 +1,6 @@
 name: preflight
 on:
   workflow_dispatch:
-  push:
-    branches: [deer-scout]
-    paths: ['.github/workflows/preflight.yml']
 jobs:
   probe:
     runs-on: ubuntu-latest
