@@ -63,7 +63,9 @@ class TileStore:
 
 
 def load_npz_into(store: TileStore, path: Path) -> None:
-    d = np.load(path)
+    # Materialize each array once: indexing an NpzFile decompresses the whole array on every access.
+    with np.load(path) as npz:
+        d = {k: npz[k] for k in npz.files}
     z, x0, y0, nx, ny = (int(v) for v in d["grid"])
     names = [f"f_{k}" for k in FACTORS] + ["thermal", "access"] + [f"s_{s}" for s in SEASONS]
     for j in range(ny):
