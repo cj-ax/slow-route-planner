@@ -34,7 +34,7 @@ Not deployed yet (see above). Intended URL: https://cj-ax.github.io/slow-route-p
 | 42576970738 | preflight (push) | success |
 | 42576980117 | preflight (dispatch) | success |
 | 42576970717, 42576983241 | pages-hello | failure (environment branch rule) |
-| see Actions tab | deploy (`ci` job on deer-scout) | see below |
+| 42578745118 | deploy: `ci` job (lint, typecheck, test, build) on deer-scout | success; `deploy` job skipped (non-main) |
 
 ## Pipeline
 Not built (skipped per the preflight fallback). `preflight.yml` shows runners have 4 vCPU, 15 GB RAM,
