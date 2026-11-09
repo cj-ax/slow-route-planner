@@ -1,0 +1,38 @@
+name: deploy
+on:
+  push:
+    branches: [main, deer-scout]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency: { group: "deploy-${{ github.ref }}", cancel-in-progress: true }
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: client/dist }
+  deploy:
+    # The github-pages environment only accepts main by default. Running this
+    # manually on another branch works once that branch is allowed in
+    # Settings > Environments > github-pages.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
+    steps:
+      - uses: actions/configure-pages@v5
+        with: { enablement: true }
+      - id: d
+        uses: actions/deploy-pages@v4

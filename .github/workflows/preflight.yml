@@ -1,0 +1,23 @@
+name: preflight
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Runner info
+        run: |
+          echo "OS: $(uname -a)"; cat /etc/os-release | head -2
+          df -h /
+          free -h
+          nproc
+      - name: Host reachability
+        run: |
+          echo "| host | http_code | time_s |" > reach.md
+          echo "|---|---|---|" >> reach.md
+          for h in apps.nationalmap.gov nassgeodata.gmu.edu www.mrlc.gov gisdata.mn.gov download.geofabrik.de s3.amazonaws.com basemap.nationalmap.gov elevation.nationalmap.gov services.arcgis.com fwspublicservices.wim.usgs.gov; do
+            r=$(curl -s -o /dev/null -m 20 -w "%{http_code} %{time_total}" https://$h/ || echo "000 timeout")
+            echo "| $h | ${r% *} | ${r#* } |" >> reach.md
+          done
+          cat reach.md
+          cat reach.md >> $GITHUB_STEP_SUMMARY
