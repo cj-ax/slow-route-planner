@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import time
 from pathlib import Path
 from typing import Any
 
@@ -157,10 +158,15 @@ def process_property(feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayer
     buf_mask = rasterize_geoms([mgeom.buffer(gc["buffer_m"] * scale)], grid, all_touched=True)
 
     src = cfg["sources"]
+    t = time.time()
     dem = fetch_dem(src["dem"], grid)
+    t_dem = time.time()
     cdl, cdl_src = fetch_cdl(src, grid)
+    t_cdl = time.time()
     nlcd = fetch_nlcd(src, grid)
+    t_nlcd = time.time()
     nwi = fetch_nwi(src["nwi"], grid)
+    t_nwi = time.time()
 
     b = grid.bounds
     roads = rasterize_geoms(osm.query(b, "road"), grid)
@@ -180,6 +186,11 @@ def process_property(feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayer
         grid,
         cfg,
         parking_px,
+    )
+    t_comp = time.time()
+    log.info(
+        "%s grid %dx%d tiles | dem %.1fs cdl %.1fs (%s) nlcd %.1fs nwi %.1fs compute %.1fs",
+        pid, grid.nx, grid.ny, t_dem - t, t_cdl - t_dem, cdl_src, t_nlcd - t_cdl, t_nwi - t_nlcd, t_comp - t_nwi,
     )
     cands = build_candidates(res, cfg)
     summary = property_summary(res, cfg, props)

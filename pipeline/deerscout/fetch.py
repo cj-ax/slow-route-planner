@@ -52,7 +52,8 @@ def get(url: str, params: dict[str, Any] | None = None, *, tries: int = 4, timeo
             return r.content
         except Exception as e:  # noqa: BLE001 - retry anything network-ish
             err = e
-            time.sleep(2 ** (i + 1))
+            if i < tries - 1:
+                time.sleep(2 ** (i + 1))
     raise RuntimeError(f"GET failed {url}: {err}")
 
 
@@ -155,24 +156,33 @@ def rgb_to_cdl(rgb: np.ndarray, tol: float = 18.0) -> np.ndarray:
     return out.reshape(rgb.shape[1:])
 
 
+_CROPSCAPE = {"failures": 0}
+
+
 def fetch_cdl(src: dict[str, Any], grid: Grid) -> tuple[np.ndarray, str]:
-    """CDL class codes on the grid. CropScape (raw codes) first, MnGeo RGB fallback."""
+    """CDL class codes on the grid. CropScape (raw codes) first, MnGeo RGB fallback.
+
+    CropScape can hang; after two failures it is skipped for the rest of the run.
+    """
     minx, miny, maxx, maxy = grid.bounds
     for year in (src["cdl_year"], src["cdl_year"] - 1):
+        if _CROPSCAPE["failures"] >= 2:
+            break
         try:
             b = transform_bounds(WEB, CRS.from_epsg(5070), minx, miny, maxx, maxy)
-            xml = get(src["cdl_cropscape"], {"year": str(year), "bbox": ",".join(f"{v:.0f}" for v in b)}, tries=2).decode()
+            xml = get(src["cdl_cropscape"], {"year": str(year), "bbox": ",".join(f"{v:.0f}" for v in b)}, tries=1, timeout=40).decode()
             m = re.search(r"<returnURL>(.*?)</returnURL>", xml)
             if not m:
                 raise RuntimeError(xml[:200])
-            raw = get(m.group(1), tries=2)
+            raw = get(m.group(1), tries=2, timeout=60)
             with MemoryFile(raw) as mf, mf.open() as ds:
                 a = ds.read(1)
                 out = to_grid(a, ds.transform, ds.crs, grid, Resampling.nearest, np.uint8)
             if out.any():
                 return out, f"CropScape CDL {year}"
         except Exception as e:  # noqa: BLE001
-            log.warning("CropScape %s failed: %s", year, e)
+            _CROPSCAPE["failures"] += 1
+            log.warning("CropScape %s failed (%d): %s", year, _CROPSCAPE["failures"], str(e)[:200])
     out = np.zeros(grid.shape, np.uint8)
     for sub, r0, c0 in _blocks(grid):
         raw = _export_image(src["cdl_mngeo"], sub, {"interpolation": "RSP_NearestNeighbor"})
