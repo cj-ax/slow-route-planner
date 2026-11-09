@@ -142,3 +142,13 @@ def test_osm_classify():
     assert classify({"highway": "path", "name": "Luce Line"}) == "busy"
     assert classify({"highway": "track"}) == "quiet"
     assert classify({"amenity": "parking"}) == "parking"
+
+
+def test_large_grids_are_searched_coarse(monkeypatch):
+    monkeypatch.setattr(F, "MAX_SEARCH_CELLS", 100)
+    cost = np.full((40, 40), 10.0)
+    cost[:, 20] = 1.0
+    corr = F.corridor_factor(cost, [(0, 20)], [(39, 20)], 1, 0)
+    assert corr.shape == cost.shape and corr[20, 20] > 0.5
+    mins = F.access_minutes(np.ones((40, 40)), [(0, 0)], 120)
+    assert mins.shape == (40, 40) and mins[39, 39] > mins[5, 5] > 0

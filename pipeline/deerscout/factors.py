@@ -87,11 +87,6 @@ def cover_factor(nlcd: np.ndarray, nwi: np.ndarray, c: Cfg) -> np.ndarray:
     return np.clip(f, 0, 1).astype(F32)
 
 
-def _disk(radius_px: float) -> np.ndarray:
-    r = max(1, int(round(radius_px)))
-    yy, xx = np.mgrid[-r : r + 1, -r : r + 1]
-    return (xx**2 + yy**2) <= r * r
-
 
 def terrain_factor(
     dem: np.ndarray, slope: np.ndarray, aspect: np.ndarray, g: float, c: Cfg
@@ -99,14 +94,11 @@ def terrain_factor(
     """Moderate slopes, benches, ridge points / saddles, leeward aspects."""
     slope_ok = ((slope >= c["slope_good_min_pct"]) & (slope <= c["slope_good_max_pct"])).astype(F32)
 
-    k = _disk(c["bench_radius_m"] / g).astype(F32)
-    k /= k.sum()
-    ctx = ndi.convolve(slope, k, mode="nearest")
+    # Box means (uniform_filter) instead of disk convolutions: same idea, O(1) per pixel.
+    ctx = ndi.uniform_filter(slope, size=int(2 * round(c["bench_radius_m"] / g) + 1), mode="nearest")
     bench = ((slope < c["bench_max_pct"]) & (ctx > c["bench_context_pct"])).astype(F32)
 
-    kt = _disk(c["tpi_radius_m"] / g).astype(F32)
-    kt /= kt.sum()
-    tpi = dem - ndi.convolve(dem.astype(F32), kt, mode="nearest")
+    tpi = dem - ndi.uniform_filter(dem.astype(F32), size=int(2 * round(c["tpi_radius_m"] / g) + 1), mode="nearest")
     ridge = ((tpi > 2.0) & (slope < 15)).astype(F32)
 
     # Saddles: the local Hessian has curvature of opposite sign along the two axes.
@@ -189,10 +181,43 @@ def pick_peaks(score: np.ndarray, allowed: np.ndarray, n: int, spacing_px: float
     return picked
 
 
+MAX_SEARCH_CELLS = 1_500_000
+
+
+def coarsen_factor(shape: tuple[int, int], max_cells: int | None = None) -> int:
+    """Integer block size that brings a grid under max_cells for graph searches."""
+    cells = max_cells or MAX_SEARCH_CELLS
+    return max(1, int(np.ceil(np.sqrt(shape[0] * shape[1] / cells))))
+
+
+def block_mean(a: np.ndarray, k: int) -> np.ndarray:
+    if k == 1:
+        return a
+    h, w = a.shape
+    H, W = -(-h // k) * k, -(-w // k) * k
+    p = np.pad(a, ((0, H - h), (0, W - w)), mode="edge")
+    return p.reshape(H // k, k, W // k, k).mean(axis=(1, 3))
+
+
+def upsample(a: np.ndarray, k: int, shape: tuple[int, int]) -> np.ndarray:
+    if k == 1:
+        return a
+    return np.kron(a, np.ones((k, k), a.dtype))[: shape[0], : shape[1]]
+
+
 def corridor_factor(
     cost: np.ndarray, beds: list[tuple[int, int]], foods: list[tuple[int, int]], links: int, smooth_px: float
 ) -> np.ndarray:
-    """Accumulate least-cost paths from each bedding point to its cheapest food points."""
+    """Accumulate least-cost paths from each bedding point to its cheapest food points.
+
+    Large grids are searched on a coarsened cost surface and upsampled.
+    """
+    k = coarsen_factor(cost.shape)
+    if k > 1:
+        small = corridor_factor(
+            block_mean(cost, k), [(r // k, c // k) for r, c in beds], [(r // k, c // k) for r, c in foods], links, max(0.5, smooth_px / k)
+        )
+        return upsample(small, k, cost.shape)
     counts = np.zeros(cost.shape, F32)
     if not beds or not foods:
         return counts
@@ -229,6 +254,11 @@ def tobler_minutes_cost(slope_pct: np.ndarray, water: np.ndarray, g: float, wate
 def access_minutes(cost: np.ndarray, sources: list[tuple[int, int]], cap: float) -> np.ndarray:
     if not sources:
         return np.full(cost.shape, np.inf, F32)
+    k = coarsen_factor(cost.shape)
+    if k > 1:
+        # Coarse cell cost = mean fine cost x k (minutes to cross k fine cells).
+        small = access_minutes(block_mean(cost, k) * k, sorted({(r // k, c // k) for r, c in sources}), cap)
+        return upsample(small, k, cost.shape)
     mcp = MCP_Geometric(cost, fully_connected=True)
     costs, _ = mcp.find_costs(sources)
     return np.minimum(costs, cap * 10).astype(F32)
