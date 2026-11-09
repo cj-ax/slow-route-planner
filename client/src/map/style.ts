@@ -2,12 +2,14 @@ import type { Map as MLMap, StyleSpecification } from "maplibre-gl";
 import { dataUrl } from "../lib/scout";
 import { BASE_LAYERS, OVERLAYS, type BaseLayerId, type OverlayId } from "../config";
 import { AGENCIES, type AgencyKey } from "../lib/land";
+import { GOV_TYPES, GOVLAND_MIN_ZOOM } from "../lib/parcels";
 
 export const LAND_SOURCE = "land";
 export const PARKING_SOURCE = "parking";
 export const LOGS_SOURCE = "logs";
 export const AREA_SOURCE = "study-area";
 export const PARCELS_SOURCE = "parcels";
+export const GOVLAND_SOURCE = "govland";
 
 const FONT = ["Open Sans Semibold"];
 
@@ -66,9 +68,27 @@ export function buildStyle(base: BaseLayerId, studyArea: GeoJSON.Polygon): Style
   sources[LAND_SOURCE] = { type: "geojson", data: empty, promoteId: "pid", tolerance: 0.5 };
   sources[PARKING_SOURCE] = { type: "geojson", data: empty };
   sources[PARCELS_SOURCE] = { type: "geojson", data: empty, tolerance: 0.3 };
+  sources[GOVLAND_SOURCE] = { type: "geojson", data: empty, tolerance: 0.4 };
   sources[LOGS_SOURCE] = { type: "geojson", data: empty };
 
+  const govColor = ["match", ["get", "govt_own"], ...Object.entries(GOV_TYPES).flatMap(([k, v]) => [k, v.color]), "#888"];
   layers.push(
+    {
+      id: "govland-fill",
+      type: "fill",
+      source: GOVLAND_SOURCE,
+      minzoom: GOVLAND_MIN_ZOOM,
+      layout: { visibility: "none" },
+      paint: { "fill-color": govColor as never, "fill-opacity": 0.18 },
+    },
+    {
+      id: "govland-line",
+      type: "line",
+      source: GOVLAND_SOURCE,
+      minzoom: GOVLAND_MIN_ZOOM,
+      layout: { visibility: "none" },
+      paint: { "line-color": govColor as never, "line-width": 1.5, "line-dasharray": [2, 1] },
+    },
     {
       id: "parcels",
       type: "line",

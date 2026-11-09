@@ -3,6 +3,7 @@ import { AGENCIES, type AgencyKey } from "../lib/land";
 import type { OverlayState } from "../App";
 import type { ScoutMeta } from "../lib/scout";
 import { ScoutLayerControls, type ScoutLayerState } from "./Scout";
+import { GOV_TYPES, type GovType } from "../lib/parcels";
 
 interface Props {
   base: BaseLayerId;
@@ -17,9 +18,11 @@ interface Props {
   setScoutLayers: (f: (s: ScoutLayerState) => ScoutLayerState) => void;
   parcelsOn: boolean;
   setParcelsOn: (on: boolean) => void;
+  govTypes: Record<GovType, boolean>;
+  setGovTypes: (f: (g: Record<GovType, boolean>) => Record<GovType, boolean>) => void;
 }
 
-export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand, meta, scoutLayers, setScoutLayers, parcelsOn, setParcelsOn }: Props) {
+export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand, meta, scoutLayers, setScoutLayers, parcelsOn, setParcelsOn, govTypes, setGovTypes }: Props) {
   return (
     <div className="panel">
       <h2>Habitat model</h2>
@@ -74,6 +77,20 @@ export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, se
           </label>
         ))}
       </div>
+      <h2>Government-owned land (MN county data)</h2>
+      <div className="agency-grid">
+        {(Object.keys(GOV_TYPES) as GovType[]).map((k) => (
+          <label key={k} className="check">
+            <input type="checkbox" checked={govTypes[k]} onChange={(e) => setGovTypes((g) => ({ ...g, [k]: e.target.checked }))} />
+            <span className="swatch" style={{ background: GOV_TYPES[k].color }} />
+            <span>{GOV_TYPES[k].label}</span>
+          </label>
+        ))}
+      </div>
+      <p className="muted small">
+        Shown from zoom 11. Fills gaps PAD-US misses, especially county tax-forfeit land. Ownership is not permission to hunt:
+        tap a parcel for notes and verify with the county.
+      </p>
       <label className="check">
         <input type="checkbox" checked={parcelsOn} onChange={(e) => setParcelsOn(e.target.checked)} />
         <span className="swatch" style={{ background: "repeating-linear-gradient(90deg,#3d3d3d 0 4px,transparent 4px 6px)" }} />

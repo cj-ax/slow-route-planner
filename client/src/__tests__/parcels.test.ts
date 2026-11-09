@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunksForView, tileToBBox } from "../lib/parcels";
+import { chunksForView, govLandNote, tileToBBox } from "../lib/parcels";
 import { lonLatToTile } from "../lib/geo";
 
 describe("parcel chunks", () => {
@@ -12,7 +12,11 @@ describe("parcel chunks", () => {
     expect(b[3]).toBeGreaterThanOrEqual(44.86);
   });
   it("covers a small view and refuses a huge one", () => {
-    expect(chunksForView([-93.67, 44.855, -93.65, 44.865]).length).toBeGreaterThanOrEqual(1);
-    expect(chunksForView([-94.5, 44.0, -93.0, 45.5])).toEqual([]);
+    expect(chunksForView([-93.67, 44.855, -93.65, 44.865], 14).length).toBeGreaterThanOrEqual(1);
+    expect(chunksForView([-94.5, 44.0, -93.0, 45.5], 14)).toEqual([]);
+  });
+  it("gives tribal and tax-forfeit specific notes", () => {
+    expect(govLandNote("Tribal")).toMatch(/Not public/);
+    expect(govLandNote("Tax Forfeit")).toMatch(/county land department/);
   });
 });
