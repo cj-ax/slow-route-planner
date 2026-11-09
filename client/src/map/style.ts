@@ -1,4 +1,5 @@
-import type { StyleSpecification } from "maplibre-gl";
+import type { Map as MLMap, StyleSpecification } from "maplibre-gl";
+import { dataUrl } from "../lib/scout";
 import { BASE_LAYERS, OVERLAYS, type BaseLayerId, type OverlayId } from "../config";
 import { AGENCIES, type AgencyKey } from "../lib/land";
 
@@ -6,6 +7,7 @@ export const LAND_SOURCE = "land";
 export const PARKING_SOURCE = "parking";
 export const LOGS_SOURCE = "logs";
 export const AREA_SOURCE = "study-area";
+export const PARCELS_SOURCE = "parcels";
 
 const FONT = ["Open Sans Semibold"];
 
@@ -63,9 +65,18 @@ export function buildStyle(base: BaseLayerId, studyArea: GeoJSON.Polygon): Style
   sources[AREA_SOURCE] = { type: "geojson", data: { type: "Feature", geometry: studyArea, properties: {} } };
   sources[LAND_SOURCE] = { type: "geojson", data: empty, promoteId: "pid", tolerance: 0.5 };
   sources[PARKING_SOURCE] = { type: "geojson", data: empty };
+  sources[PARCELS_SOURCE] = { type: "geojson", data: empty, tolerance: 0.3 };
   sources[LOGS_SOURCE] = { type: "geojson", data: empty };
 
   layers.push(
+    {
+      id: "parcels",
+      type: "line",
+      source: PARCELS_SOURCE,
+      minzoom: 14,
+      layout: { visibility: "none" },
+      paint: { "line-color": "#3d3d3d", "line-width": 1, "line-opacity": 0.75, "line-dasharray": [3, 2] },
+    },
     {
       id: "study-area",
       type: "line",
@@ -166,3 +177,99 @@ export function buildStyle(base: BaseLayerId, studyArea: GeoJSON.Polygon): Style
 }
 
 export type { OverlayId };
+
+// ---------- pipeline layers (added at runtime when data/meta.json exists) ----------
+
+
+export const CANDIDATES_SOURCE = "candidates";
+export const SEASONS_LIST = ["early", "rut", "late"] as const;
+
+export function addScoutLayers(map: MLMap, zoom: { min: number; max: number }): void {
+  if (map.getSource("heat-rut")) return;
+  for (const s of SEASONS_LIST) {
+    map.addSource(`heat-${s}`, {
+      type: "raster",
+      url: `pmtiles://${dataUrl(`heat-${s}.pmtiles`)}`,
+      tileSize: 256,
+      minzoom: zoom.min,
+      maxzoom: zoom.max,
+    });
+    map.addLayer(
+      {
+        id: `heat-${s}`,
+        type: "raster",
+        source: `heat-${s}`,
+        layout: { visibility: "none" },
+        paint: { "raster-opacity": 0.75, "raster-resampling": "nearest", "raster-fade-duration": 0 },
+      },
+      "land-line",
+    );
+  }
+  map.addSource("corridors", {
+    type: "raster",
+    url: `pmtiles://${dataUrl("corridors.pmtiles")}`,
+    tileSize: 256,
+    minzoom: zoom.min,
+    maxzoom: zoom.max,
+  });
+  map.addLayer(
+    { id: "corridors", type: "raster", source: "corridors", layout: { visibility: "none" }, paint: { "raster-opacity": 0.8 } },
+    "land-line",
+  );
+  map.addSource(CANDIDATES_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer(
+    {
+      id: "cand-bedding",
+      type: "circle",
+      source: CANDIDATES_SOURCE,
+      minzoom: 11,
+      filter: ["==", ["get", "kind"], "bedding"],
+      paint: { "circle-radius": 8, "circle-color": "#8d5524", "circle-opacity": 0.85, "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 },
+    },
+    "logs",
+  );
+  map.addLayer(
+    {
+      id: "cand-funnel",
+      type: "circle",
+      source: CANDIDATES_SOURCE,
+      minzoom: 11,
+      filter: ["==", ["get", "kind"], "funnel"],
+      paint: { "circle-radius": 7, "circle-color": "#7a1ea0", "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 },
+    },
+    "logs",
+  );
+  map.addLayer(
+    {
+      id: "cand-stand",
+      type: "circle",
+      source: CANDIDATES_SOURCE,
+      minzoom: 10,
+      filter: ["==", ["get", "kind"], "stand"],
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 4, 15, 9],
+        "circle-color": ["match", ["get", "fit"], "good", "#2f9e44", "ok", "#f59f00", "bad", "#e03131", "#ff922b"],
+        "circle-stroke-color": "#111",
+        "circle-stroke-width": 2,
+      },
+    },
+    "logs",
+  );
+  map.addLayer(
+    {
+      id: "cand-label",
+      type: "symbol",
+      source: CANDIDATES_SOURCE,
+      minzoom: 13,
+      layout: {
+        "text-field": ["match", ["get", "kind"], "stand", "Stand", "bedding", "Bed", "funnel", "Funnel", ""],
+        "text-font": FONT,
+        "text-size": 11,
+        "text-offset": [0, 1.2],
+        "text-anchor": "top",
+      },
+      paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.5 },
+    },
+    "logs",
+  );
+}

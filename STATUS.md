@@ -1,21 +1,21 @@
 # Morning summary
-1. **Live app: https://cj-ax.github.io/slow-route-planner/** (deployed from `main`, deploy run 42634587160).
-2. On your phone, open it in Safari or Chrome and choose "Add to Home Screen" to use it like an app.
-3. M1 (the usable map app) is done: 26 unit tests, lint and typecheck pass, and a smoke test passed on the live site. M2 to M4 (habitat scoring and heat map) are not built yet.
-4. First check: tap **Properties**. About 600 units should load in about 3 s (the status line at the top shows the count). Tap one, then "Zoom to property".
-5. Then **Layers**: toggle Cropland and Wetlands, adjust opacity, and switch the base to Imagery or NAIP.
-6. In the field: tap ◎ for GPS, tap ＋ (or long-press the map) to log a rub, scrape, or sighting.
-7. Back up logs with **Log** > Export GPX or GeoJSON. Logs live only on that device.
-8. Before a hunt, open the property and tap "Download for offline" while you have signal.
-9. "Deer listed" means MN DNR flags deer for that WMA. Everything else shows "verify".
-10. Always confirm boundaries, regulations, and access with MN DNR (WI DNR east of the St. Croix).
+1. **Live app: https://cj-ax.github.io/slow-route-planner/** (M1 to M4 deployed from `main`).
+2. On your phone: open it, then "Add to Home Screen". Heat maps and stands load as you zoom in.
+3. **Properties** tab: 519 public units scored, sorted by habitat score for the selected season. Filter by distance, size and score; each row shows walk time and top reasons.
+4. Pick a **Season** (Early archery, Rut, Late) at the top. The heat map, stand candidates and scores switch with it.
+5. Set **Wind from**. Stand dots turn green (good), amber (marginal) or red (bad). Tap a stand for reasons, best winds and entry advice.
+6. Tap anywhere on scored land for a factor breakdown (food, cover, edge, corridor, pressure, terrain) and walk minutes.
+7. Layers: heat opacity, travel corridors, bedding and funnel candidates, CDL / NLCD / NWI overlays, and MN parcel lines (zoom 14+).
+8. In the field: tap ◎ for GPS, tap ＋ or long-press to log sign. Export logs (GPX or GeoJSON) from the Log tab.
+9. First check: a WMA you know well. Do the stands and corridors match what you have seen? Weights live in `pipeline/config.yaml`.
+10. It is a scouting aid, not a success predictor. Verify boundaries, regulations and access with MN DNR (WI DNR east of the St. Croix).
 
 ---
 
 ## Live URL
 https://cj-ax.github.io/slow-route-planner/ (HTTP 200, verified with a headless phone smoke test)
 
-## What works (M1, branch `deer-scout`)
+## What works
 - MapLibre map, mobile-first, with USGS Topo, USGS Imagery, and NAIP bases.
 - Overlays: 3DEP hillshade, CDL 2025, NLCD 2021, NWI, each with an opacity slider.
 - Public land: PAD-US + MN DNR WMAs, 11 agency classes, toggles, 75-mile circle, DNR parking dots.
@@ -24,9 +24,19 @@ https://cj-ax.github.io/slow-route-planner/ (HTTP 200, verified with a headless 
 - PWA: manifest, service worker app shell, per-property offline tile download, runtime tile cache.
 - Footer disclaimer always visible.
 
+- **M2/M3 pipeline** (`/pipeline`, Actions `pipeline` workflow): 519 properties scored at ~13.5 m.
+  Season heat maps, corridors, factor tiles (PMTiles), rankings and 9,831 candidates. Published data is 60 MB.
+- **M3 app**: ranked list (score, size, walk time, distance, reasons, score filter), tap-anywhere breakdown.
+- **M4**: season toggle, wind-aware stands with warnings, 35 app tests plus 18 pipeline tests (including an
+  end-to-end fixture smoke test), lint and type checks in CI, docs.
+- **Parcel lines**: MN open county parcels, outlines only, viewport-loaded at zoom 14+.
+
 ## Stubbed / not done
-- Pipeline, heat map, corridors, stand candidates, scores (M2, M3), and season rasters with wind-aware stands (M4).
-- The season and wind selectors exist but only tag logs.
+- 1 m lidar for the top properties (3DEP ~10 m is used everywhere).
+- 16 very spread-out property groups (over 24 z13 tiles across, e.g. statewide habitat-area groupings) are not scored.
+- Heat, corridor and factor tiles are not cached for offline use (base tiles are).
+- Wisconsin parcels and the MnGeo government-owned-lands layer are not added.
+- See KNOWN_LIMITS.md.
 
 ## Actions runs
 | run | workflow | result |
@@ -35,11 +45,14 @@ https://cj-ax.github.io/slow-route-planner/ (HTTP 200, verified with a headless 
 | 42576980117 | preflight (dispatch) | success |
 | 42576970717, 42576983241 | pages-hello | failure (environment branch rule) |
 | 42634587160 | deploy on main (ci + Pages deploy) | success |
+| 42641504190 | pipeline pilot (3 properties) | success |
+| 42658790520 | pipeline all, 8 shards, 519 properties, 60 MB | success |
 | 42578745118 | deploy: `ci` job (lint, typecheck, test, build) on deer-scout | success; `deploy` job skipped (non-main) |
 
-## Pipeline
-Not built (skipped per the preflight fallback). `preflight.yml` shows runners have 4 vCPU, 15 GB RAM,
-88 GB free disk, and reach every data host, so the pipeline plan is feasible once Pages is unblocked.
+## Pipeline (run manually)
+Actions > `pipeline` > Run workflow on `main`, mode `all`, shards `8`. It takes about 6 min when cached and about 45 min from scratch
+(the USGS elevation service slows under parallel load). It publishes the `data-latest` release and redeploys the site.
+Use mode `pilot` for a 3-property test, or `ids:<id>,<id>` for specific units. Details in pipeline/README.md.
 
 ## Latest passing milestone
 M1 = commit `1c8ce65` on `deer-scout` (CI run 42578745118).

@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 concurrency: { group: "deploy-${{ github.ref }}", cancel-in-progress: true }
@@ -16,11 +17,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: pipeline/requirements.txt }
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Add pipeline data (if published)
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          mkdir -p client/dist/data
+          if gh release download data-latest -p deer-data.tar.gz -D /tmp 2>/dev/null; then
+            tar -xzf /tmp/deer-data.tar.gz -C client/dist/data && ls -la client/dist/data
+          else
+            echo "no pipeline data release yet"
+          fi
+      - name: Pipeline tests
+        run: |
+          pip install -q -r pipeline/requirements.txt
+          cd pipeline && ruff check . && python -m pytest -q
       - uses: actions/upload-pages-artifact@v3
         with: { path: client/dist }
   deploy:

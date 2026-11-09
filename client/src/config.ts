@@ -16,6 +16,8 @@ export const SERVICES = {
     "https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/PADUS_Public_Access/FeatureServer/0",
   dnrWma: `${MNGEO}/us_mn_state_dnr/bdry_dnr_wildlife_mgmt_areas_pub/FeatureServer/0`,
   dnrWmaFacilities: `${MNGEO}/us_mn_state_dnr/struc_dnr_wld_mgmt_areas_pub/FeatureServer/0`,
+  // Opt-in open county parcels compiled by MnGeo (all 87 MN counties). Geometry only is requested.
+  mnParcels: `${MNGEO}/us_mn_state_mngeo/plan_parcels_open/FeatureServer/1`,
 };
 
 /** How long cached public-land data is trusted before a background refresh. */

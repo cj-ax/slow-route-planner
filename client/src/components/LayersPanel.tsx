@@ -1,6 +1,8 @@
 import { BASE_LAYERS, OVERLAYS, type BaseLayerId, type OverlayId } from "../config";
 import { AGENCIES, type AgencyKey } from "../lib/land";
 import type { OverlayState } from "../App";
+import type { ScoutMeta } from "../lib/scout";
+import { ScoutLayerControls, type ScoutLayerState } from "./Scout";
 
 interface Props {
   base: BaseLayerId;
@@ -10,11 +12,19 @@ interface Props {
   agencies: Record<AgencyKey, boolean>;
   setAgencies: (f: (a: Record<AgencyKey, boolean>) => Record<AgencyKey, boolean>) => void;
   onRefreshLand: () => void;
+  meta: ScoutMeta | null;
+  scoutLayers: ScoutLayerState;
+  setScoutLayers: (f: (s: ScoutLayerState) => ScoutLayerState) => void;
+  parcelsOn: boolean;
+  setParcelsOn: (on: boolean) => void;
 }
 
-export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand }: Props) {
+export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand, meta, scoutLayers, setScoutLayers, parcelsOn, setParcelsOn }: Props) {
   return (
     <div className="panel">
+      <h2>Habitat model</h2>
+      <ScoutLayerControls meta={meta} state={scoutLayers} setState={setScoutLayers} />
+
       <h2>Base map</h2>
       <div className="seg">
         {Object.values(BASE_LAYERS).map((b) => (
@@ -64,6 +74,15 @@ export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, se
           </label>
         ))}
       </div>
+      <label className="check">
+        <input type="checkbox" checked={parcelsOn} onChange={(e) => setParcelsOn(e.target.checked)} />
+        <span className="swatch" style={{ background: "repeating-linear-gradient(90deg,#3d3d3d 0 4px,transparent 4px 6px)" }} />
+        <span>Parcel lines (MN, zoom in to see)</span>
+      </label>
+      <p className="muted small">
+        Parcel lines come from county records via MnGeo. Context only, not survey-grade, and they never imply permission to
+        hunt or cross private land.
+      </p>
       <p className="muted">
         Sources: USGS PAD-US and MN DNR WMA boundaries, fetched live and cached on this device for 7 days. Blue dots are
         DNR WMA parking lots. County tax-forfeit land is only shown where PAD-US includes it.

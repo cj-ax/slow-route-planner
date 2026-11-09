@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { filterProperties } from "../components/PropertyList";
 import { planOfflineTiles, MAX_OFFLINE_TILES } from "../lib/offline";
 import type { Property } from "../lib/land";
+import type { Ranking } from "../lib/scout";
 
 const mk = (id: string, over: Partial<Property>): Property => ({
   id, name: id, agency: "wma", manager: "", designation: "", state: "MN", access: "open",
@@ -18,11 +19,22 @@ describe("filterProperties", () => {
     mk("d", { distMi: 12, acres: 10, agency: "sna" }),
   ];
   it("filters by distance, size, agency, hunting", () => {
-    const f = { maxMi: 75, minAcres: 40, deerListedOnly: false, sort: "distance" as const, q: "" };
+    const f = { maxMi: 75, minAcres: 40, deerListedOnly: false, sort: "distance" as const, q: "", minScore: 0 };
     expect(filterProperties(props, f, allOn).map((p) => p.id)).toEqual(["b", "a"]);
     expect(filterProperties(props, { ...f, sort: "size" }, allOn).map((p) => p.id)).toEqual(["a", "b"]);
     expect(filterProperties(props, { ...f, deerListedOnly: true }, allOn).map((p) => p.id)).toEqual(["a"]);
     expect(filterProperties(props, { ...f, minAcres: 0 }, { ...allOn, sna: false }).map((p) => p.id)).toEqual(["b", "a"]);
+  });
+
+  it("sorts and filters by season score when rankings exist", () => {
+    const f = { maxMi: 75, minAcres: 0, deerListedOnly: false, sort: "score" as const, q: "", minScore: 0 };
+    const r = (id: string, rut: number): [string, Ranking] => [
+      id,
+      { id, name: id, scores: { early: 0, rut, late: 0 }, reasons: { early: [], rut: [], late: [] }, walkMin: 3, walkMedianMin: 9, hasParking: true },
+    ];
+    const rankings = new Map<string, Ranking>([r("a", 40), r("b", 80), r("d", 60)]);
+    expect(filterProperties(props, f, allOn, new Map(), rankings, "rut").map((p) => p.id)).toEqual(["b", "d", "a"]);
+    expect(filterProperties(props, { ...f, minScore: 50 }, allOn, new Map(), rankings, "rut").map((p) => p.id)).toEqual(["b", "d"]);
   });
 });
 

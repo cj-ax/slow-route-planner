@@ -76,6 +76,8 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(tileResponse(req));
     return;
   }
+  // Pipeline data (PMTiles range requests, JSON) goes straight to the network.
+  if (url.pathname.includes("/data/")) return;
   if (url.origin === self.location.origin) {
     e.respondWith(
       fetch(req)

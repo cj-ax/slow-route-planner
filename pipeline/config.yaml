@@ -1,0 +1,105 @@
+# Deer Scout scoring configuration. Every weight and threshold the pipeline
+# uses lives here. The app reads the season weights from the published
+# meta.json, so changing this file and re-running the pipeline is enough.
+
+version: 1
+
+grid:
+  # Work on the Web Mercator zoom-13 pixel grid: ~13.5 m on the ground at 45°N,
+  # inside the 10-15 m target, and tiles fall straight out with no resampling.
+  zoom: 13
+  buffer_m: 500          # context buffer around each property
+  max_tiles_side: 24     # skip blocks of very spread-out property groups beyond this
+  min_acres: 20          # properties smaller than this are not scored
+
+sources:
+  dem: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage
+  cdl_cropscape: https://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLFile
+  cdl_year: 2025
+  cdl_mngeo: https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mda/agri_cropland_data_layer_2025/ImageServer/exportImage
+  nlcd_wcs: https://www.mrlc.gov/geoserver/mrlc_download/wcs
+  nlcd_coverage: mrlc_download__NLCD_2021_Land_Cover_L48
+  nwi: https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/rest/services/Wetlands/MapServer/0/query
+  osm_extracts:
+    - https://download.geofabrik.de/north-america/us/minnesota-latest.osm.pbf
+    - https://download.geofabrik.de/north-america/us/wisconsin-latest.osm.pbf
+
+food:
+  # CDL codes treated as preferred deer food
+  crop_codes: [1, 4, 5, 12, 13, 21, 22, 23, 24, 25, 26, 27, 28, 29, 36, 37, 58, 59, 205, 225, 226, 228, 236, 237, 238, 239, 240, 241, 254]
+  in_field: 0.35          # score inside the field itself (night feeding, little daylight use)
+  ramp_m: 100             # 0..ramp_m from field edge ramps 0.6 -> 1
+  best_max_m: 400         # best within ramp_m..best_max_m of ag edge
+  zero_at_m: 1500         # fades to 0 here
+  oak_bonus: 0.25         # NLCD deciduous forest as a minor mast proxy
+
+cover:
+  nlcd: {41: 0.6, 42: 0.7, 43: 0.7, 52: 0.9, 90: 0.9, 95: 0.7, 71: 0.35, 81: 0.15, 82: 0.05}
+  nwi_scrub_shrub: 0.95
+  nwi_emergent: 0.75
+  nwi_forested: 0.85
+  smooth_px: 1.0
+
+terrain:
+  slope_good_min_pct: 5
+  slope_good_max_pct: 25
+  bench_max_pct: 5
+  bench_context_pct: 12
+  bench_radius_m: 60
+  tpi_radius_m: 150
+  leeward_aspect: [60, 180]   # sheltered from prevailing NW winds
+  weights: {slope: 0.4, bench: 0.25, ridge_saddle: 0.2, leeward: 0.15}
+
+edge:
+  decay_m: 40
+
+pressure:
+  full_at_m: 400          # distance from roads/parking where pressure stops mattering
+  exponent: 0.8
+  busy_trail_m: 150       # named / foot / bike trails
+  busy_trail_factor: 0.6
+  quiet_trail_m: 75       # unnamed tracks and paths
+  quiet_trail_factor: 0.85
+
+corridor:
+  max_bedding: 12
+  max_food: 12
+  min_spacing_m: 150
+  links_per_bed: 4
+  smooth_px: 1.5
+  cost:
+    base: 1.0
+    open_penalty: 4.0     # multiplied by (1 - cover)
+    steep_pct: 35
+    steep_penalty: 3.0
+    water: 50.0
+    developed: 20.0
+    road: 5.0
+
+access:
+  # Tobler hiking function, km/h = 6 * exp(-3.5 * |slope + 0.05|)
+  water_cost_mult: 30
+  max_minutes: 120
+  osm_parking_search_m: 2000
+
+seasons:
+  early:
+    label: Early archery
+    weights: {food: 0.35, cover: 0.20, edge: 0.15, corridor: 0.15, pressure: 0.10, terrain: 0.05}
+    thermal_mix: 0.0
+  rut:
+    label: Rut
+    weights: {food: 0.10, cover: 0.15, edge: 0.20, corridor: 0.30, pressure: 0.15, terrain: 0.10}
+    thermal_mix: 0.0
+  late:
+    label: Late season
+    weights: {food: 0.35, cover: 0.25, edge: 0.10, corridor: 0.10, pressure: 0.15, terrain: 0.05}
+    thermal_mix: 0.4      # late-season cover = (1-mix)*cover + mix*south-facing thermal cover
+
+candidates:
+  stands_per_property: 5
+  bedding_per_property: 3
+  funnels_per_property: 3
+  min_spacing_m: 150
+  approach_radius_m: 300
+  property_score_top_frac: 0.1   # property score = mean of top 10% of cells
