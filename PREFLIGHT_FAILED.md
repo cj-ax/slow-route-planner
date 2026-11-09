@@ -1,3 +1,5 @@
+> **Resolved 2026-11-09:** deer-scout was merged to main (PR #1) and Pages deployed from main. Kept for the record.
+
 # Preflight result: PARTIAL FAIL (Pages)
 
 | step | result |
