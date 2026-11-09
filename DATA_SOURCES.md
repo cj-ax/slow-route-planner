@@ -20,6 +20,10 @@ except the Open Sans glyph range (`client/public/fonts`, Apache 2.0, via MapLibr
 | NWI polygons (pipeline) | USFWS Wetlands MapServer query | Public domain | USFWS NWI |
 | OpenStreetMap roads, trails, parking (pipeline) | download.geofabrik.de MN + WI extracts | **ODbL 1.0** | © OpenStreetMap contributors. The derived pressure and access layers are a Produced Work; the attribution is shown in the map credits. |
 | MN parcels (outlines only) | enterprise.gisdata.mn.gov us_mn_state_mngeo/plan_parcels_open | MN county open data (opt-in, all 87 counties), Minnesota Geospatial Commons terms | Minnesota counties via MnGeo |
+| MN government-owned land (owner type, county) | enterprise.gisdata.mn.gov us_mn_state_mngeo/plan_gov_own_open | MN county open data via MnGeo | Minnesota counties via MnGeo |
+| MN deer permit areas (DPA 227 boundary) | enterprise.gisdata.mn.gov us_mn_state_dnr/bdry_deer_permit_areas | MN DNR | MN DNR |
+| MnTopo 2nd-gen 1 m lidar DEM (high-detail areas) | enterprise.gisdata.mn.gov/agsimg MnTopo/Gen_2_1M_DEM | MN public data | MN DNR / MnGeo MnTopo |
+| NAIP 4-band (NIR) for vegetation index and texture (high-detail areas) | imagery.nationalmap.gov USGSNAIPPlus | Public domain (USDA FSA) | USDA NAIP via USGS |
 | MapLibre GL JS | npm | BSD-3-Clause | MapLibre contributors |
 | PMTiles JS / Python | npm, PyPI | BSD-3-Clause | Protomaps |
 

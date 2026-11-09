@@ -24,7 +24,18 @@
   used everywhere.
 - Very spread-out property groups (over 24 z13 tiles on a side, about 80 km) are skipped.
 
+## High-detail area (DPA 227)
+- Scored on a ~1.7 m grid with MnTopo 1 m lidar and NAIP. Crop (CDL) and base land cover (NLCD) are still
+  30 m. NAIP only sharpens them: woody strips in fields and openings in woods (patches of 400 m² and up).
+- NAIP texture and NDVI thresholds were calibrated on one DPA 227 sample. Leaf-off or very wet imagery
+  years can shift them (config `hd`).
+- Corridor and walk-time searches run on a coarsened grid (~5 m) and are upsampled.
+- Other DPAs: add their numbers to `hd.dpas` in pipeline/config.yaml and rerun the pipeline.
+
 ## App and data
+- **Government-owned land** (Layers): MnGeo's county-derived State, County Fee, Tax Forfeit, Federal and
+  Tribal parcels from zoom 11. Ownership is not permission. Tax-forfeit rules vary by county, and some parcels
+  are leased or landlocked. Tribal land is not public hunting land.
 - **Parcel lines** (Layers > Parcel lines) are Minnesota only, from MnGeo's open county parcels, loaded by viewport at zoom 14+. Geometry only, no owner data. Not survey-grade, and never permission to hunt or cross. Wisconsin parcels are not wired in.
 - **Hunting status** is `listed` only for MN WMAs where the DNR layer sets the `deer` flag.
   Everything else is `unknown`.

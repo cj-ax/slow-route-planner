@@ -45,3 +45,13 @@
   DNR lists deer). Chosen deterministically by `select --mode pilot`.
 - **Candidate counts**: 5 stands per season, 3 bedding, 3 funnels per property, at least 150 m
   apart.
+- **Gov-owned land layer**: viewport-loaded from MnGeo `plan_gov_own_open` (owner type and county only).
+  Tax forfeit and county land are on by default because PAD-US misses them. State and federal are off by
+  default (PAD-US already shows them). Tribal land is labeled not public.
+- **Wisconsin parcels**: skipped at the user's request.
+- **DPA 227 "most detail"**: zoom 16 (~1.7 m). Zoom 17 (~0.85 m) would roughly 4x the tiles and break the
+  250 MB budget, and the crop and land cover inputs cannot support it. The DNR lidar canopy-height model
+  does not reach this latitude (coverage starts ~46.4°N) and the U of M DSM was unreachable, so woody detail
+  comes from NAIP NDVI + NIR texture (thresholds 0.40 / 9 / 0.20 calibrated against NLCD classes at Bethel WMA).
+- **HD archives are separate** (`data/hd/`) and HD properties are excluded from the standard archives, so
+  both draw at every zoom with no overlap. HD heat uses the standard color stretch so colors compare directly.
