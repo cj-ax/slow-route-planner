@@ -14,8 +14,13 @@ except the Open Sans glyph range (`client/public/fonts`, Apache 2.0, via MapLibr
 | Cropland Data Layer 2025 (MN) | enterprise.gisdata.mn.gov us_mn_state_mda/agri_cropland_data_layer_2025 | Public domain (USDA NASS) | USDA NASS CDL, hosted by MN Dept. of Agriculture / MnGeo |
 | NLCD 2021 land cover | www.mrlc.gov GeoServer WMS | Public domain | MRLC consortium / USGS |
 | NWI wetlands | fwspublicservices.wim.usgs.gov Wetlands MapServer | Public domain | U.S. Fish and Wildlife Service NWI |
+| USGS 3DEP 1/3 arc-second DEM (pipeline) | elevation.nationalmap.gov exportImage | Public domain | USGS 3D Elevation Program |
+| NLCD 2021 raw classes (pipeline) | www.mrlc.gov GeoServer WCS | Public domain | MRLC / USGS |
+| CDL raw classes for WI (pipeline) | nassgeodata.gmu.edu CropScape GetCDLFile | Public domain | USDA NASS |
+| NWI polygons (pipeline) | USFWS Wetlands MapServer query | Public domain | USFWS NWI |
+| OpenStreetMap roads, trails, parking (pipeline) | download.geofabrik.de MN + WI extracts | **ODbL 1.0** | © OpenStreetMap contributors. The derived pressure and access layers are a Produced Work; the attribution is shown in the map credits. |
 | MapLibre GL JS | npm | BSD-3-Clause | MapLibre contributors |
+| PMTiles JS / Python | npm, PyPI | BSD-3-Clause | Protomaps |
 
-Planned for the pipeline milestones (not used yet): OpenStreetMap via Geofabrik (ODbL 1.0,
-"© OpenStreetMap contributors", share-alike applies to derived databases), NHD (public domain),
-MN DNR deer permit areas, MnGeo parcels (context only, never implies hunting rights).
+Not used (yet): NHD (NWI and NLCD cover open water), MN DNR deer permit areas, MnGeo parcels,
+and 1 m lidar.
