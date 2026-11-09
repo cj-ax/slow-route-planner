@@ -1,8 +1,5 @@
 name: pipeline
 on:
-  push:
-    branches: [deer-scout]
-    paths: ["pipeline/**", ".github/workflows/pipeline.yml"]
   workflow_dispatch:
     inputs:
       mode:
