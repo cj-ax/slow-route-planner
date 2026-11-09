@@ -1,6 +1,6 @@
 # Morning summary
 1. Preflight: push and Actions PASS. **Pages deploy FAILED**: the `github-pages` environment only allows `main`, and I was not permitted to push to `main`.
-2. M1 (the usable map app) is built, tested (26 unit tests, lint, typecheck) and pushed to branch `deer-scout`, tagged `m1-ok`. M2 to M4 were skipped per your fallback rule.
+2. M1 (the usable map app) is built, tested (26 unit tests, lint, typecheck, CI green) and pushed to branch `deer-scout` (commit `1c8ce65`). M2 to M4 were skipped per your fallback rule.
 3. **To get the live URL (2 min):** Settings > Pages > Source: "GitHub Actions". Then Settings > Environments > github-pages > Deployment branches > add `deer-scout`.
 4. Then Actions > `deploy` > Run workflow > branch `deer-scout`. The app will be at https://cj-ax.github.io/slow-route-planner/
 5. Alternative: merge `deer-scout` into `main` yourself (or tell me it's OK), and `deploy` runs on its own.
@@ -40,5 +40,7 @@ Not deployed yet (see above). Intended URL: https://cj-ax.github.io/slow-route-p
 Not built (skipped per the preflight fallback). `preflight.yml` shows runners have 4 vCPU, 15 GB RAM,
 88 GB free disk, and reach every data host, so the pipeline plan is feasible once Pages is unblocked.
 
-## Latest passing tag
-`m1-ok` (on `deer-scout`)
+## Latest passing milestone
+M1 = commit `1c8ce65` on `deer-scout` (CI run 42578745118).
+The `m1-ok` tag could not be pushed: this session's git proxy returned HTTP 403 for tag pushes (branch pushes work).
+To create it yourself: `git tag -a m1-ok 1c8ce65 -m "M1 passing" && git push origin m1-ok`
