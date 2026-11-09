@@ -15,9 +15,11 @@ interface Props {
   meta: ScoutMeta | null;
   scoutLayers: ScoutLayerState;
   setScoutLayers: (f: (s: ScoutLayerState) => ScoutLayerState) => void;
+  parcelsOn: boolean;
+  setParcelsOn: (on: boolean) => void;
 }
 
-export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand, meta, scoutLayers, setScoutLayers }: Props) {
+export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand, meta, scoutLayers, setScoutLayers, parcelsOn, setParcelsOn }: Props) {
   return (
     <div className="panel">
       <h2>Habitat model</h2>
@@ -72,6 +74,15 @@ export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, se
           </label>
         ))}
       </div>
+      <label className="check">
+        <input type="checkbox" checked={parcelsOn} onChange={(e) => setParcelsOn(e.target.checked)} />
+        <span className="swatch" style={{ background: "repeating-linear-gradient(90deg,#3d3d3d 0 4px,transparent 4px 6px)" }} />
+        <span>Parcel lines (MN, zoom in to see)</span>
+      </label>
+      <p className="muted small">
+        Parcel lines come from county records via MnGeo. Context only, not survey-grade, and they never imply permission to
+        hunt or cross private land.
+      </p>
       <p className="muted">
         Sources: USGS PAD-US and MN DNR WMA boundaries, fetched live and cached on this device for 7 days. Blue dots are
         DNR WMA parking lots. County tax-forfeit land is only shown where PAD-US includes it.

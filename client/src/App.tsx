@@ -15,7 +15,8 @@ import { LOG_TYPES, loadLogs, saveLog, deleteLog, type ScoutLog, type Season } f
 import { loadPref, loadScalar, savePref } from "./lib/prefs";
 import { WIND_DIRS, type WindDir } from "./lib/wind";
 import { Protocol } from "pmtiles";
-import { addScoutLayers, agencyFilter, buildStyle, CANDIDATES_SOURCE, LAND_SOURCE, LOGS_SOURCE, PARKING_SOURCE, SEASONS_LIST } from "./map/style";
+import { addScoutLayers, agencyFilter, buildStyle, CANDIDATES_SOURCE, LAND_SOURCE, LOGS_SOURCE, PARCELS_SOURCE, PARKING_SOURCE, SEASONS_LIST } from "./map/style";
+import { PARCEL_MIN_ZOOM, parcelsForView } from "./lib/parcels";
 import {
   breakdownAt,
   loadCandidates,
@@ -77,6 +78,7 @@ export function App() {
   const [scoutLayers, setScoutLayers] = useState<ScoutLayerState>(() => loadPref("scoutLayers", DEFAULT_SCOUT_LAYERS));
   const [pointInfo, setPointInfo] = useState<{ lngLat: LonLat; loading: boolean; b: PointBreakdown | null } | null>(null);
   const [cand, setCand] = useState<CandidateProps | null>(null);
+  const [parcelsOn, setParcelsOn] = useState<boolean>(() => loadScalar("parcels", false));
 
   const [gps, setGps] = useState<GeolocationPosition | null>(null);
   const [gpsErr, setGpsErr] = useState<string | null>(null);
@@ -222,6 +224,28 @@ export function App() {
       })),
     });
   }, [candidates, wind, mapReady, meta]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    map.setLayoutProperty("parcels", "visibility", parcelsOn ? "visible" : "none");
+    savePref("parcels", parcelsOn);
+    if (!parcelsOn) return;
+    let cancelled = false;
+    const refresh = () => {
+      if (map.getZoom() < PARCEL_MIN_ZOOM) return;
+      const b = map.getBounds();
+      parcelsForView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()])
+        .then((fc) => !cancelled && (map.getSource(PARCELS_SOURCE) as GeoJSONSource).setData(fc))
+        .catch(() => undefined);
+    };
+    refresh();
+    map.on("moveend", refresh);
+    return () => {
+      cancelled = true;
+      map.off("moveend", refresh);
+    };
+  }, [parcelsOn, mapReady]);
 
   const propsById = useMemo(() => new Map(land?.properties.map((p) => [p.id, p]) ?? []), [land]);
   const selected = selectedId ? propsById.get(selectedId) ?? null : null;
@@ -482,6 +506,8 @@ export function App() {
             meta={meta}
             scoutLayers={scoutLayers}
             setScoutLayers={setScoutLayers}
+            parcelsOn={parcelsOn}
+            setParcelsOn={setParcelsOn}
           />
         )}
         {sheet === "list" && (

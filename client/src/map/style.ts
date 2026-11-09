@@ -7,6 +7,7 @@ export const LAND_SOURCE = "land";
 export const PARKING_SOURCE = "parking";
 export const LOGS_SOURCE = "logs";
 export const AREA_SOURCE = "study-area";
+export const PARCELS_SOURCE = "parcels";
 
 const FONT = ["Open Sans Semibold"];
 
@@ -64,9 +65,18 @@ export function buildStyle(base: BaseLayerId, studyArea: GeoJSON.Polygon): Style
   sources[AREA_SOURCE] = { type: "geojson", data: { type: "Feature", geometry: studyArea, properties: {} } };
   sources[LAND_SOURCE] = { type: "geojson", data: empty, promoteId: "pid", tolerance: 0.5 };
   sources[PARKING_SOURCE] = { type: "geojson", data: empty };
+  sources[PARCELS_SOURCE] = { type: "geojson", data: empty, tolerance: 0.3 };
   sources[LOGS_SOURCE] = { type: "geojson", data: empty };
 
   layers.push(
+    {
+      id: "parcels",
+      type: "line",
+      source: PARCELS_SOURCE,
+      minzoom: 14,
+      layout: { visibility: "none" },
+      paint: { "line-color": "#3d3d3d", "line-width": 1, "line-opacity": 0.75, "line-dasharray": [3, 2] },
+    },
     {
       id: "study-area",
       type: "line",

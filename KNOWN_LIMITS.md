@@ -25,6 +25,7 @@
 - Very spread-out property groups (over 24 z13 tiles on a side, about 80 km) are skipped.
 
 ## App and data
+- **Parcel lines** (Layers > Parcel lines) are Minnesota only, from MnGeo's open county parcels, loaded by viewport at zoom 14+. Geometry only, no owner data. Not survey-grade, and never permission to hunt or cross. Wisconsin parcels are not wired in.
 - **Hunting status** is `listed` only for MN WMAs where the DNR layer sets the `deer` flag.
   Everything else is `unknown`.
 - **County tax-forfeit land** has no statewide public service. Only what PAD-US carries as

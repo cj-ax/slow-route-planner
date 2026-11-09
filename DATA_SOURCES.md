@@ -19,8 +19,9 @@ except the Open Sans glyph range (`client/public/fonts`, Apache 2.0, via MapLibr
 | CDL raw classes for WI (pipeline) | nassgeodata.gmu.edu CropScape GetCDLFile | Public domain | USDA NASS |
 | NWI polygons (pipeline) | USFWS Wetlands MapServer query | Public domain | USFWS NWI |
 | OpenStreetMap roads, trails, parking (pipeline) | download.geofabrik.de MN + WI extracts | **ODbL 1.0** | © OpenStreetMap contributors. The derived pressure and access layers are a Produced Work; the attribution is shown in the map credits. |
+| MN parcels (outlines only) | enterprise.gisdata.mn.gov us_mn_state_mngeo/plan_parcels_open | MN county open data (opt-in, all 87 counties), Minnesota Geospatial Commons terms | Minnesota counties via MnGeo |
 | MapLibre GL JS | npm | BSD-3-Clause | MapLibre contributors |
 | PMTiles JS / Python | npm, PyPI | BSD-3-Clause | Protomaps |
 
-Not used (yet): NHD (NWI and NLCD cover open water), MN DNR deer permit areas, MnGeo parcels,
+Not used (yet): NHD (NWI and NLCD cover open water), MN DNR deer permit areas, WI parcels,
 and 1 m lidar.
