@@ -3,6 +3,9 @@ import { DNR_HUNTING_RULES_URL, DNR_REGS_URL, type BaseLayerId, type OverlayId }
 import { AGENCIES, type Property } from "../lib/land";
 import { formatMi } from "../lib/geo";
 import { downloadTiles, planOfflineTiles } from "../lib/offline";
+import { windFit, type CandidateProps, type Ranking } from "../lib/scout";
+import type { Season } from "../lib/logs";
+import type { WindDir } from "../lib/wind";
 
 interface Props {
   p: Property;
@@ -11,11 +14,19 @@ interface Props {
   logCount: number;
   onZoom: () => void;
   onBack: () => void;
+  ranking: Ranking | null;
+  season: Season;
+  seasonLabel: string;
+  stands: GeoJSON.Feature<GeoJSON.Point, CandidateProps>[];
+  wind: WindDir | "";
+  onStand: (f: GeoJSON.Feature<GeoJSON.Point, CandidateProps>) => void;
 }
+
+const FIT_TEXT = { good: "good wind", ok: "marginal wind", bad: "bad wind", unknown: "set wind" };
 
 const ACCESS_TEXT = { open: "Open (PAD-US)", restricted: "Restricted / permit (PAD-US)", unknown: "Unknown" };
 
-export function PropertyDetail({ p, base, overlays, logCount, onZoom, onBack }: Props) {
+export function PropertyDetail({ p, base, overlays, logCount, onZoom, onBack, ranking, season, seasonLabel, stands, wind, onStand }: Props) {
   const bases: BaseLayerId[] = Array.from(new Set<BaseLayerId>([base, "topo", "imagery"]));
   const plan = planOfflineTiles(p.bbox, bases, overlays);
   const [dl, setDl] = useState<{ done: number; failed: number; running: boolean } | null>(null);
@@ -42,11 +53,62 @@ export function PropertyDetail({ p, base, overlays, logCount, onZoom, onBack }: 
         <span className="swatch" style={{ background: AGENCIES[p.agency].color }} /> {AGENCIES[p.agency].label} ·{" "}
         {p.state}
       </p>
+      {ranking && (
+        <div className="scorebox">
+          <div>
+            <span className="big">{ranking.scores[season]}</span>
+            <span className="muted small"> /100 {seasonLabel}</span>
+          </div>
+          <div className="small muted">
+            Early {ranking.scores.early} · Rut {ranking.scores.rut} · Late {ranking.scores.late}
+          </div>
+          <ul className="small">
+            {ranking.reasons[season]?.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {stands.length > 0 && (
+        <>
+          <h3>Top stand candidates ({seasonLabel})</h3>
+          <ul className="plist">
+            {stands.map((f, i) => {
+              const fit = windFit(f.properties.wind, wind);
+              return (
+                <li key={i}>
+                  <button onClick={() => onStand(f)}>
+                    <span className={`dot dot--${fit}`} />
+                    <span className="plist__main">
+                      <span className="plist__name">
+                        Stand {i + 1} · {f.properties.score}{" "}
+                        <span className={`badge badge--${fit}`}>{FIT_TEXT[fit]}</span>
+                      </span>
+                      <span className="plist__meta">
+                        Good winds {f.properties.wind?.goodWinds.join(", ") || "n/a"} · {f.properties.reasons[0]}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
       <dl className="facts">
         <dt>Size</dt>
         <dd>{p.acres.toLocaleString()} acres</dd>
         <dt>From Victoria</dt>
         <dd>{formatMi(p.distMi)} straight line</dd>
+        {ranking?.walkMin != null && (
+          <>
+            <dt>Walk in</dt>
+            <dd>
+              {ranking.walkMin < 1 ? "<1" : `~${Math.round(ranking.walkMin)}`} min to the boundary, ~{Math.round(ranking.walkMedianMin ?? 0)} min to the
+              middle (slope-aware, from {ranking.hasParking ? "parking" : "nearest road"})
+            </dd>
+          </>
+        )}
         <dt>DNR parking</dt>
         <dd>
           {p.parkingCount

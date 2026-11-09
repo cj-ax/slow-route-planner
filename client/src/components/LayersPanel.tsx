@@ -1,6 +1,8 @@
 import { BASE_LAYERS, OVERLAYS, type BaseLayerId, type OverlayId } from "../config";
 import { AGENCIES, type AgencyKey } from "../lib/land";
 import type { OverlayState } from "../App";
+import type { ScoutMeta } from "../lib/scout";
+import { ScoutLayerControls, type ScoutLayerState } from "./Scout";
 
 interface Props {
   base: BaseLayerId;
@@ -10,11 +12,17 @@ interface Props {
   agencies: Record<AgencyKey, boolean>;
   setAgencies: (f: (a: Record<AgencyKey, boolean>) => Record<AgencyKey, boolean>) => void;
   onRefreshLand: () => void;
+  meta: ScoutMeta | null;
+  scoutLayers: ScoutLayerState;
+  setScoutLayers: (f: (s: ScoutLayerState) => ScoutLayerState) => void;
 }
 
-export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand }: Props) {
+export function LayersPanel({ base, setBase, overlays, setOverlays, agencies, setAgencies, onRefreshLand, meta, scoutLayers, setScoutLayers }: Props) {
   return (
     <div className="panel">
+      <h2>Habitat model</h2>
+      <ScoutLayerControls meta={meta} state={scoutLayers} setState={setScoutLayers} />
+
       <h2>Base map</h2>
       <div className="seg">
         {Object.values(BASE_LAYERS).map((b) => (

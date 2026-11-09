@@ -14,13 +14,29 @@ import { AGENCIES, loadLandData, forceRefreshLand, type AgencyKey, type LandData
 import { LOG_TYPES, loadLogs, saveLog, deleteLog, type ScoutLog, type Season } from "./lib/logs";
 import { loadPref, loadScalar, savePref } from "./lib/prefs";
 import { WIND_DIRS, type WindDir } from "./lib/wind";
-import { agencyFilter, buildStyle, LAND_SOURCE, LOGS_SOURCE, PARKING_SOURCE } from "./map/style";
+import { Protocol } from "pmtiles";
+import { addScoutLayers, agencyFilter, buildStyle, CANDIDATES_SOURCE, LAND_SOURCE, LOGS_SOURCE, PARKING_SOURCE, SEASONS_LIST } from "./map/style";
+import {
+  breakdownAt,
+  loadCandidates,
+  loadMeta,
+  loadRankings,
+  windFit,
+  type CandidateProps,
+  type PointBreakdown,
+  type Ranking,
+  type ScoutMeta,
+} from "./lib/scout";
+import { CandidateDetail, DEFAULT_SCOUT_LAYERS, PointCard, type ScoutLayerState } from "./components/Scout";
 import { LayersPanel } from "./components/LayersPanel";
 import { PropertyList } from "./components/PropertyList";
 import { PropertyDetail } from "./components/PropertyDetail";
 import { LogForm, LogList } from "./components/Logs";
 
-type Sheet = "none" | "layers" | "list" | "property" | "log" | "logs";
+type Sheet = "none" | "layers" | "list" | "property" | "log" | "logs" | "cand";
+
+const pmtilesProtocol = new Protocol();
+maplibregl.addProtocol("pmtiles", pmtilesProtocol.tile);
 
 export interface OverlayState {
   on: boolean;
@@ -54,6 +70,13 @@ export function App() {
   const [logs, setLogs] = useState<ScoutLog[]>([]);
   const [draftAt, setDraftAt] = useState<{ at: LonLat; source: "gps" | "map"; accuracy: number | null } | null>(null);
   const [editing, setEditing] = useState<ScoutLog | null>(null);
+
+  const [meta, setMeta] = useState<ScoutMeta | null>(null);
+  const [rankings, setRankings] = useState<Map<string, Ranking>>(new Map());
+  const [candidates, setCandidates] = useState<GeoJSON.FeatureCollection<GeoJSON.Point, CandidateProps> | null>(null);
+  const [scoutLayers, setScoutLayers] = useState<ScoutLayerState>(() => loadPref("scoutLayers", DEFAULT_SCOUT_LAYERS));
+  const [pointInfo, setPointInfo] = useState<{ lngLat: LonLat; loading: boolean; b: PointBreakdown | null } | null>(null);
+  const [cand, setCand] = useState<CandidateProps | null>(null);
 
   const [gps, setGps] = useState<GeolocationPosition | null>(null);
   const [gpsErr, setGpsErr] = useState<string | null>(null);
@@ -127,6 +150,13 @@ export function App() {
       );
     }).catch((e: Error) => !cancelled && setLandStatus(`Public land failed to load: ${e.message}`));
     loadLogs().then((l) => !cancelled && setLogs(l)).catch(() => undefined);
+    loadMeta().then((m) => {
+      if (cancelled || !m) return;
+      setMeta(m);
+      loadRankings().then((r) => !cancelled && setRankings(r));
+      // Candidates are bigger; fetch after first paint.
+      setTimeout(() => loadCandidates().then((c) => !cancelled && c && setCandidates(c)), 800);
+    });
     return () => {
       cancelled = true;
     };
@@ -153,6 +183,45 @@ export function App() {
       })),
     });
   }, [logs, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !meta) return;
+    addScoutLayers(map, meta.zoom);
+  }, [mapReady, meta]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !meta || !map.getLayer("heat-rut")) return;
+    for (const s of SEASONS_LIST) {
+      map.setLayoutProperty(`heat-${s}`, "visibility", scoutLayers.heat && s === season ? "visible" : "none");
+      map.setPaintProperty(`heat-${s}`, "raster-opacity", scoutLayers.heatOpacity);
+    }
+    map.setLayoutProperty("corridors", "visibility", scoutLayers.corridors ? "visible" : "none");
+    map.setLayoutProperty("cand-stand", "visibility", scoutLayers.stands ? "visible" : "none");
+    map.setLayoutProperty("cand-bedding", "visibility", scoutLayers.bedding ? "visible" : "none");
+    map.setLayoutProperty("cand-funnel", "visibility", scoutLayers.funnels ? "visible" : "none");
+    map.setFilter("cand-stand", ["all", ["==", ["get", "kind"], "stand"], ["==", ["get", "season"], season]]);
+    map.setFilter("cand-label", [
+      "any",
+      ["all", ["==", ["get", "kind"], "stand"], ["==", ["get", "season"], season], ["literal", scoutLayers.stands]],
+      ["all", ["==", ["get", "kind"], "bedding"], ["literal", scoutLayers.bedding]],
+      ["all", ["==", ["get", "kind"], "funnel"], ["literal", scoutLayers.funnels]],
+    ]);
+    savePref("scoutLayers", scoutLayers);
+  }, [mapReady, meta, scoutLayers, season]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !candidates || !map.getSource(CANDIDATES_SOURCE)) return;
+    (map.getSource(CANDIDATES_SOURCE) as GeoJSONSource).setData({
+      type: "FeatureCollection",
+      features: candidates.features.map((f) => ({
+        ...f,
+        properties: { ...f.properties, fit: windFit(f.properties.wind, wind) },
+      })),
+    });
+  }, [candidates, wind, mapReady, meta]);
 
   const propsById = useMemo(() => new Map(land?.properties.map((p) => [p.id, p]) ?? []), [land]);
   const selected = selectedId ? propsById.get(selectedId) ?? null : null;
@@ -191,6 +260,23 @@ export function App() {
     const map = mapRef.current;
     if (!map || !mapReady) return;
     const onClick = (e: maplibregl.MapMouseEvent) => {
+      const candLayers = ["cand-stand", "cand-bedding", "cand-funnel"].filter((l) => map.getLayer(l));
+      const candHit = candLayers.length ? map.queryRenderedFeatures(e.point, { layers: candLayers })[0] : undefined;
+      if (candHit) {
+        const p = candHit.properties as Record<string, unknown>;
+        const parse = (v: unknown) => (typeof v === "string" ? JSON.parse(v) : v);
+        setCand({ ...(p as unknown as CandidateProps), reasons: parse(p.reasons), wind: parse(p.wind), entry: parse(p.entry) });
+        setSelectedId(p.pid as string);
+        setSheet("cand");
+        return;
+      }
+      if (meta) {
+        const ll: LonLat = [e.lngLat.lng, e.lngLat.lat];
+        setPointInfo({ lngLat: ll, loading: true, b: null });
+        breakdownAt(ll[0], ll[1], meta.zoom.max).then((b) =>
+          setPointInfo((cur) => (cur && cur.lngLat === ll ? { ...cur, loading: false, b } : cur)),
+        );
+      }
       const logHit = map.queryRenderedFeatures(e.point, { layers: ["logs"] })[0];
       if (logHit) {
         const l = logs.find((x) => x.id === logHit.properties?.id);
@@ -224,7 +310,7 @@ export function App() {
       map.off("mouseleave", "land-fill", leave);
       map.off("dragstart", stopFollow);
     };
-  }, [mapReady, logs, openLogAt]);
+  }, [mapReady, logs, openLogAt, meta]);
 
   const flyToProperty = useCallback((p: Property) => {
     const map = mapRef.current;
@@ -376,6 +462,7 @@ export function App() {
         </button>
       </nav>
       {gpsErr && <div className="toast">GPS: {gpsErr}</div>}
+      {pointInfo && meta && <PointCard info={pointInfo} meta={meta} season={season} onClose={() => setPointInfo(null)} />}
 
       <div className={`sheet ${sheet !== "none" ? "sheet--open" : ""}`}>
         {sheet !== "none" && (
@@ -392,6 +479,9 @@ export function App() {
             agencies={agencies}
             setAgencies={setAgencies}
             onRefreshLand={refreshLand}
+            meta={meta}
+            scoutLayers={scoutLayers}
+            setScoutLayers={setScoutLayers}
           />
         )}
         {sheet === "list" && (
@@ -399,6 +489,8 @@ export function App() {
             properties={land?.properties ?? []}
             agencies={agencies}
             logs={logs}
+            rankings={rankings}
+            season={season}
             onPick={(p) => {
               setSelectedId(p.id);
               setSheet("property");
@@ -412,6 +504,16 @@ export function App() {
             base={base}
             overlays={(Object.keys(overlays) as OverlayId[]).filter((k) => overlays[k].on)}
             logCount={logs.filter((l) => l.propertyId === selected.id).length}
+            ranking={rankings.get(selected.id) ?? null}
+            season={season}
+            seasonLabel={meta?.seasons[season]?.label ?? season}
+            stands={(candidates?.features ?? []).filter((f) => f.properties.pid === selected.id && f.properties.kind === "stand" && f.properties.season === season)}
+            wind={wind}
+            onStand={(f) => {
+              setCand(f.properties);
+              setSheet("cand");
+              mapRef.current?.easeTo({ center: f.geometry.coordinates as LonLat, zoom: Math.max(mapRef.current.getZoom(), 15) });
+            }}
             onZoom={() => flyToProperty(selected)}
             onBack={() => setSheet("list")}
           />
@@ -432,6 +534,16 @@ export function App() {
             onCancel={() => setSheet("none")}
           />
         )}
+        {sheet === "cand" && cand && (
+          <CandidateDetail
+            c={cand}
+            wind={wind}
+            onProperty={() => {
+              setSelectedId(cand.pid);
+              setSheet("property");
+            }}
+          />
+        )}
         {sheet === "logs" && (
           <LogList
             logs={logs}
@@ -447,7 +559,7 @@ export function App() {
       </div>
 
       <nav className="tabbar">
-        <button className={sheet === "list" || sheet === "property" ? "on" : ""} onClick={() => toggleSheet("list")}>
+        <button className={sheet === "list" || sheet === "property" || sheet === "cand" ? "on" : ""} onClick={() => toggleSheet("list")}>
           Properties
         </button>
         <button className={sheet === "layers" ? "on" : ""} onClick={() => toggleSheet("layers")}>
