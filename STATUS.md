@@ -1,19 +1,19 @@
 # Morning summary
-1. Preflight: push and Actions PASS. **Pages deploy FAILED**: the `github-pages` environment only allows `main`, and I was not permitted to push to `main`.
-2. M1 (the usable map app) is built, tested (26 unit tests, lint, typecheck, CI green) and pushed to branch `deer-scout` (commit `1c8ce65`). M2 to M4 were skipped per your fallback rule.
-3. **To get the live URL (2 min):** Settings > Pages > Source: "GitHub Actions". Then Settings > Environments > github-pages > Deployment branches > add `deer-scout`.
-4. Then Actions > `deploy` > Run workflow > branch `deer-scout`. The app will be at https://cj-ax.github.io/slow-route-planner/
-5. Alternative: merge `deer-scout` into `main` yourself (or tell me it's OK), and `deploy` runs on its own.
-6. Preview now without deploying: `git checkout deer-scout && npm install && npm run build && npm run preview`, then open http://localhost:4173
-7. First check: open **Properties**. About 600 units should load in 3 s (status line at top). Tap one, then "Zoom to property".
-8. Then **Layers**: toggle Cropland and Wetlands, move the opacity sliders, and switch the base to Imagery or NAIP.
-9. In the field: tap ◎ for GPS, tap ＋ (or long-press the map) to log a rub, scrape, or sighting. Use **Log** > Export GPX for a backup.
-10. Before a hunt, open the property and tap "Download for offline". Always verify regulations and access with MN DNR.
+1. **Live app: https://cj-ax.github.io/slow-route-planner/** (deployed from `main`, deploy run 42634587160).
+2. On your phone, open it in Safari or Chrome and choose "Add to Home Screen" to use it like an app.
+3. M1 (the usable map app) is done: 26 unit tests, lint and typecheck pass, and a smoke test passed on the live site. M2 to M4 (habitat scoring and heat map) are not built yet.
+4. First check: tap **Properties**. About 600 units should load in about 3 s (the status line at the top shows the count). Tap one, then "Zoom to property".
+5. Then **Layers**: toggle Cropland and Wetlands, adjust opacity, and switch the base to Imagery or NAIP.
+6. In the field: tap ◎ for GPS, tap ＋ (or long-press the map) to log a rub, scrape, or sighting.
+7. Back up logs with **Log** > Export GPX or GeoJSON. Logs live only on that device.
+8. Before a hunt, open the property and tap "Download for offline" while you have signal.
+9. "Deer listed" means MN DNR flags deer for that WMA. Everything else shows "verify".
+10. Always confirm boundaries, regulations, and access with MN DNR (WI DNR east of the St. Croix).
 
 ---
 
 ## Live URL
-Not deployed yet (see above). Intended URL: https://cj-ax.github.io/slow-route-planner/
+https://cj-ax.github.io/slow-route-planner/ (HTTP 200, verified with a headless phone smoke test)
 
 ## What works (M1, branch `deer-scout`)
 - MapLibre map, mobile-first, with USGS Topo, USGS Imagery, and NAIP bases.
@@ -34,6 +34,7 @@ Not deployed yet (see above). Intended URL: https://cj-ax.github.io/slow-route-p
 | 42576970738 | preflight (push) | success |
 | 42576980117 | preflight (dispatch) | success |
 | 42576970717, 42576983241 | pages-hello | failure (environment branch rule) |
+| 42634587160 | deploy on main (ci + Pages deploy) | success |
 | 42578745118 | deploy: `ci` job (lint, typecheck, test, build) on deer-scout | success; `deploy` job skipped (non-main) |
 
 ## Pipeline
