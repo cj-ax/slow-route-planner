@@ -1,0 +1,13 @@
+{
+  "name": "Deer Scout",
+  "short_name": "Deer Scout",
+  "description": "Public land scouting map for deer hunting near Victoria, MN.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1f2a1f",
+  "theme_color": "#1f2a1f",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

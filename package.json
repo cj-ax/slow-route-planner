@@ -1,28 +1,21 @@
 {
-  "name": "slow-route-planner",
+  "name": "deer-scout",
   "private": true,
   "version": "0.1.0",
-  "description": "Local-first personal scenic route planner + live ride dashboard.",
+  "description": "Personal deer hunting scouting map for public land near Victoria, MN.",
   "type": "module",
-  "workspaces": [
-    "shared",
-    "server",
-    "client"
-  ],
+  "workspaces": ["client"],
   "scripts": {
-    "dev": "npm run build -w @srp/shared && concurrently -n server,client -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "npm run dev -w @srp/server",
-    "dev:client": "npm run dev -w @srp/client",
-    "build:shared": "npm run build -w @srp/shared",
-    "build": "npm run build -w @srp/shared && npm run build -w @srp/client",
-    "typecheck": "tsc -p shared/tsconfig.json --noEmit && tsc -p server/tsconfig.json --noEmit && tsc -p client/tsconfig.json --noEmit && tsc -p api/tsconfig.json --noEmit",
+    "dev": "npm run dev -w @deer/client",
+    "build": "npm run build -w @deer/client",
+    "preview": "npm run preview -w @deer/client",
+    "typecheck": "tsc -p client/tsconfig.json --noEmit",
     "lint": "eslint .",
-    "start": "npm run dev"
+    "test": "npm run test -w @deer/client"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.10.2",
-    "concurrently": "^9.1.0",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
     "typescript": "^5.7.2",
