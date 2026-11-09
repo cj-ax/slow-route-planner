@@ -102,7 +102,8 @@ def terrain_factor(
     ridge = ((tpi > 2.0) & (slope < 15)).astype(F32)
 
     # Saddles: the local Hessian has curvature of opposite sign along the two axes.
-    sm = ndi.gaussian_filter(dem.astype(np.float64), 2.0)
+    # Smooth over ~25 m so 1 m lidar micro-relief does not read as saddles.
+    sm = ndi.gaussian_filter(dem.astype(np.float64), max(2.0, 25.0 / g))
     gy, gx = np.gradient(sm, g)
     gyy, gyx = np.gradient(gy, g)
     gxy, gxx = np.gradient(gx, g)

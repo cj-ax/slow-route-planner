@@ -165,3 +165,5 @@ a { color: #1864ab; }
 .bars li { display: grid; grid-template-columns: 1fr 70px 64px; gap: 6px; align-items: center; font-size: 12px; padding: 1px 0; }
 .bar { height: 8px; background: #e9ece1; border-radius: 4px; overflow: hidden; }
 .bar span { display: block; height: 100%; background: #e8590c; }
+
+.badge--hd { background: #e5dbff; color: #5f3dc4; margin-left: 4px; }

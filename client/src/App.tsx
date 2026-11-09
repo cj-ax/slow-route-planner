@@ -193,17 +193,21 @@ export function App() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !meta) return;
-    addScoutLayers(map, meta.zoom);
+    addScoutLayers(map, meta);
   }, [mapReady, meta]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !meta || !map.getLayer("heat-rut")) return;
     for (const s of SEASONS_LIST) {
-      map.setLayoutProperty(`heat-${s}`, "visibility", scoutLayers.heat && s === season ? "visible" : "none");
-      map.setPaintProperty(`heat-${s}`, "raster-opacity", scoutLayers.heatOpacity);
+      for (const id of [`heat-${s}`, `heat-hd-${s}`]) {
+        if (!map.getLayer(id)) continue;
+        map.setLayoutProperty(id, "visibility", scoutLayers.heat && s === season ? "visible" : "none");
+        map.setPaintProperty(id, "raster-opacity", scoutLayers.heatOpacity);
+      }
     }
-    map.setLayoutProperty("corridors", "visibility", scoutLayers.corridors ? "visible" : "none");
+    for (const id of ["corridors", "corridors-hd"])
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", scoutLayers.corridors ? "visible" : "none");
     map.setLayoutProperty("cand-stand", "visibility", scoutLayers.stands ? "visible" : "none");
     map.setLayoutProperty("cand-bedding", "visibility", scoutLayers.bedding ? "visible" : "none");
     map.setLayoutProperty("cand-funnel", "visibility", scoutLayers.funnels ? "visible" : "none");
@@ -332,7 +336,7 @@ export function App() {
       if (meta) {
         const ll: LonLat = [e.lngLat.lng, e.lngLat.lat];
         setPointInfo({ lngLat: ll, loading: true, b: null });
-        breakdownAt(ll[0], ll[1], meta.zoom.max).then((b) =>
+        breakdownAt(ll[0], ll[1], meta).then((b) =>
           setPointInfo((cur) => (cur && cur.lngLat === ll ? { ...cur, loading: false, b } : cur)),
         );
       }

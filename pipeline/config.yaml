@@ -103,3 +103,20 @@ candidates:
   min_spacing_m: 150
   approach_radius_m: 300
   property_score_top_frac: 0.1   # property score = mean of top 10% of cells
+
+# High-detail mode for selected deer permit areas: zoom-16 grid (~1.7 m), MnTopo
+# 1 m lidar DEM, and NAIP 4-band (NDVI + canopy texture) refinement of cover.
+hd:
+  dpas: [227]
+  dpa_service: https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_dnr/bdry_deer_permit_areas/FeatureServer/0
+  min_overlap: 0.05          # fraction of a property inside the DPA to qualify
+  zoom: 16
+  max_pixels: 40000000       # step down a zoom level for properties bigger than this
+  dem: https://enterprise.gisdata.mn.gov/agsimg/rest/services/MnTopo/Gen_2_1M_DEM/ImageServer/exportImage
+  naip: https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage
+  ndvi_woody: 0.40           # calibrated on DPA 227 NAIP vs NLCD forest/crop
+  tex_woody: 9.0             # local std-dev of NIR over ~8 m
+  ndvi_open: 0.20
+  treeline_cover: 0.7        # cover value for NAIP-detected woody strips inside fields
+  clearing_cover: 0.15       # cover value for NAIP-detected openings inside woods
+  min_patch_m2: 400          # ignore woody/open patches smaller than this (single trees, tiny gaps)

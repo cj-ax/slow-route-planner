@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "pilot (3 properties), all, or ids:<id1>,<id2>"
+        description: "pilot (3 properties), all, hd (high-detail DPA properties only), or ids:<id1>,<id2>"
         default: pilot
       shards:
         description: "number of parallel scoring jobs"
@@ -49,6 +49,8 @@ jobs:
       - name: Prepare OSM layers
         continue-on-error: true
         run: python -m deerscout.cli osm $(for f in pipeline/work/pbf/*.pbf; do echo --pbf $f; done)
+      - name: High-detail properties (deer permit areas in config.yaml hd.dpas)
+        run: python -m deerscout.cli hd-ids
       - name: Selection
         run: python -m deerscout.cli select --mode "${{ env.MODE }}" | tee pipeline/work/selection.tsv
       - id: m
@@ -60,6 +62,7 @@ jobs:
             pipeline/work/properties.geojson
             pipeline/work/dnr_parking.geojson
             pipeline/work/selection.tsv
+            pipeline/work/hd_ids.json
             pipeline/work/osm/osm.parquet
           retention-days: 7
 

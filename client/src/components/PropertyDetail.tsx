@@ -59,6 +59,11 @@ export function PropertyDetail({ p, base, overlays, logCount, onZoom, onBack, ra
             <span className="big">{ranking.scores[season]}</span>
             <span className="muted small"> /100 {seasonLabel}</span>
           </div>
+          {ranking.hd && (
+            <div className="small">
+              <span className="badge badge--hd">High detail</span> ~1.7 m model from 1 m lidar and NAIP imagery
+            </div>
+          )}
           <div className="small muted">
             Early {ranking.scores.early} · Rut {ranking.scores.rut} · Late {ranking.scores.late}
           </div>

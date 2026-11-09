@@ -52,10 +52,50 @@ def select(features: list[dict[str, Any]], cfg: dict[str, Any], mode: str) -> li
             if len(picked) < 3:
                 picked.append(f)
         return picked
+    if mode == "hd":
+        ids = load_hd_ids()
+        return [f for f in feats if f["properties"]["id"] in ids]
     if mode.startswith("ids:"):
         ids = set(mode[4:].split(","))
         return [f for f in feats if f["properties"]["id"] in ids]
     return sorted(feats, key=lambda f: -f["properties"]["acres"])
+
+
+def load_hd_ids() -> set[str]:
+    p = WORK / "hd_ids.json"
+    return set(json.loads(p.read_text())["ids"]) if p.exists() else set()
+
+
+def compute_hd_ids(features: list[dict[str, Any]], dpa_geoms: list[Any], min_overlap: float) -> list[str]:
+    """Properties with at least `min_overlap` of their area inside any high-detail DPA."""
+    from shapely.geometry import shape
+    from shapely.ops import unary_union
+
+    area = unary_union(dpa_geoms)
+    out = []
+    for f in features:
+        g = shape(f["geometry"])
+        if g.is_empty or not g.intersects(area):
+            continue
+        if g.intersection(area).area / g.area >= min_overlap:
+            out.append(f["properties"]["id"])
+    return sorted(out)
+
+
+def cmd_hd_ids(_a: argparse.Namespace) -> int:
+    import requests
+    from shapely.geometry import shape
+
+    cfg = load_cfg()
+    hc = cfg["hd"]
+    where = "dpa IN (" + ",".join(str(int(d)) for d in hc["dpas"]) + ")"
+    r = requests.get(f'{hc["dpa_service"]}/query', params={"where": where, "outFields": "dpa", "outSR": "4326", "f": "geojson"}, timeout=120)
+    r.raise_for_status()
+    dpas = [shape(f["geometry"]) for f in r.json()["features"]]
+    ids = compute_hd_ids(load_properties(), dpas, hc["min_overlap"])
+    (WORK / "hd_ids.json").write_text(json.dumps({"dpas": hc["dpas"], "ids": ids}))
+    print(f"{len(ids)} high-detail properties in DPA {hc['dpas']}")
+    return 0
 
 
 def shard_of(feats: list[dict[str, Any]], shard: int, of: int) -> list[dict[str, Any]]:
@@ -75,6 +115,7 @@ def cmd_process(a: argparse.Namespace) -> int:
         log.warning("OSM layers missing; pressure uses DNR parking only")
     parking_fc = json.loads((WORK / "dnr_parking.geojson").read_text())
     dnr_parking = [tuple(f["geometry"]["coordinates"]) for f in parking_fc["features"]]
+    hd_ids = load_hd_ids()
     out_dir = WORK / "props"
     out_dir.mkdir(parents=True, exist_ok=True)
     ok = fail = 0
@@ -86,7 +127,7 @@ def cmd_process(a: argparse.Namespace) -> int:
         pid = f["properties"]["id"]
         t0 = time.time()
         try:
-            r = process_property(f, cfg, osm, dnr_parking, out_dir)  # type: ignore[arg-type]
+            r = process_property(f, cfg, osm, dnr_parking, out_dir, hd=pid in hd_ids)  # type: ignore[arg-type]
             ok += r is not None
             log.info("[%d/%d] %s ok in %.1fs", i + 1, len(feats), pid, time.time() - t0)
         except Exception:  # noqa: BLE001 - one bad property must not kill the shard
@@ -138,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("merge")
     m.add_argument("--out", default="pipeline/out")
     m.set_defaults(fn=cmd_merge)
+    h = sub.add_parser("hd-ids")
+    h.set_defaults(fn=cmd_hd_ids)
     o = sub.add_parser("osm")
     o.add_argument("--pbf", action="append", required=True)
     o.set_defaults(fn=cmd_osm)

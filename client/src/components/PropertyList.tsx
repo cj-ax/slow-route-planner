@@ -134,7 +134,9 @@ export function PropertyList({ properties, agencies, logs, rankings, season, onP
                 <span className="swatch" style={{ background: AGENCIES[p.agency].color }} />
               )}
               <span className="plist__main">
-                <span className="plist__name">{p.name}</span>
+                <span className="plist__name">
+                  {p.name} {r?.hd && <span className="badge badge--hd">HD</span>}
+                </span>
                 <span className="plist__meta">
                   {p.acres.toLocaleString()} ac · {formatMi(p.distMi)} · {p.state}
                   {r?.walkMin != null ? ` · walk ${r.walkMin < 1 ? "<1" : Math.round(r.walkMin)} min` : p.parkingMi !== null ? ` · P ${p.parkingCount}` : ""}

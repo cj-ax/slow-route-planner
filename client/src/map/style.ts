@@ -1,5 +1,5 @@
 import type { Map as MLMap, StyleSpecification } from "maplibre-gl";
-import { dataUrl } from "../lib/scout";
+import { dataUrl, type ScoutMeta } from "../lib/scout";
 import { BASE_LAYERS, OVERLAYS, type BaseLayerId, type OverlayId } from "../config";
 import { AGENCIES, type AgencyKey } from "../lib/land";
 import { GOV_TYPES, GOVLAND_MIN_ZOOM } from "../lib/parcels";
@@ -204,8 +204,9 @@ export type { OverlayId };
 export const CANDIDATES_SOURCE = "candidates";
 export const SEASONS_LIST = ["early", "rut", "late"] as const;
 
-export function addScoutLayers(map: MLMap, zoom: { min: number; max: number }): void {
+export function addScoutLayers(map: MLMap, meta: ScoutMeta): void {
   if (map.getSource("heat-rut")) return;
+  const zoom = meta.zoom;
   for (const s of SEASONS_LIST) {
     map.addSource(`heat-${s}`, {
       type: "raster",
@@ -236,6 +237,32 @@ export function addScoutLayers(map: MLMap, zoom: { min: number; max: number }): 
     { id: "corridors", type: "raster", source: "corridors", layout: { visibility: "none" }, paint: { "raster-opacity": 0.8 } },
     "land-line",
   );
+  // High-detail archives (e.g. DPA 227 at ~1.7 m). They cover different properties than the
+  // standard set, so both draw at every zoom without double coloring.
+  if (meta.hd) {
+    const hz = meta.hd.zoom;
+    for (const s of SEASONS_LIST) {
+      map.addSource(`heat-hd-${s}`, {
+        type: "raster",
+        url: `pmtiles://${dataUrl(`hd/heat-${s}.pmtiles`)}`,
+        tileSize: 256,
+        minzoom: hz.min,
+        maxzoom: hz.max,
+      });
+      map.addLayer(
+        {
+          id: `heat-hd-${s}`,
+          type: "raster",
+          source: `heat-hd-${s}`,
+          layout: { visibility: "none" },
+          paint: { "raster-opacity": 0.75, "raster-resampling": "nearest", "raster-fade-duration": 0 },
+        },
+        "land-line",
+      );
+    }
+    map.addSource("corridors-hd", { type: "raster", url: `pmtiles://${dataUrl("hd/corridors.pmtiles")}`, tileSize: 256, minzoom: hz.min, maxzoom: hz.max });
+    map.addLayer({ id: "corridors-hd", type: "raster", source: "corridors-hd", layout: { visibility: "none" }, paint: { "raster-opacity": 0.8 } }, "land-line");
+  }
   map.addSource(CANDIDATES_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   map.addLayer(
     {

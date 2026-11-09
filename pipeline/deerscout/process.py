@@ -16,7 +16,7 @@ from shapely.ops import transform as shp_transform
 
 from . import factors as F
 from .candidates import build_candidates, property_summary
-from .fetch import fetch_cdl, fetch_dem, fetch_nlcd, fetch_nwi, rasterize_geoms
+from .fetch import fetch_cdl, fetch_dem, fetch_dem_hd, fetch_naip_ndvi_texture, fetch_nlcd, fetch_nwi, rasterize_geoms
 from .grid import Grid, grid_for_bbox, lonlat_to_merc
 from .osm import OsmLayers
 
@@ -41,6 +41,33 @@ def q8(a: np.ndarray) -> np.ndarray:
     return np.clip(np.round(a * 255), 0, 255).astype(np.uint8)
 
 
+BASE_RES_M = 13.5
+
+
+def refine_cover(
+    cover: np.ndarray, woody: np.ndarray, opening: np.ndarray, water: np.ndarray, ndvi: np.ndarray, tex: np.ndarray, hc: dict[str, Any], g: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Sharpen 30 m land cover with NAIP: tree lines and brush in fields become cover,
+    clearings and plots inside woods become openings."""
+    fine_woody = (ndvi > hc["ndvi_woody"]) & (tex > hc["tex_woody"])
+    fine_open = ndvi < hc["ndvi_open"]
+    # Majority filter (5x5) removes speckle.
+    fine_woody = ndi.uniform_filter(fine_woody.astype(np.float32), 5) > 0.5
+    fine_open = ndi.uniform_filter(fine_open.astype(np.float32), 5) > 0.5
+    # Ignore patches smaller than ~min_patch_m2 (single trees, small gaps) so edges stay meaningful.
+    from skimage.morphology import remove_small_holes, remove_small_objects
+
+    min_px = max(4, int(hc.get("min_patch_m2", 400) / (g * g)))
+    added = remove_small_objects(fine_woody & ~woody & ~water, min_size=min_px)
+    cleared = remove_small_objects(fine_open & woody & ~water, min_size=min_px)
+    cover = cover.copy()
+    cover[added] = np.maximum(cover[added], hc["treeline_cover"])
+    cover[cleared] = np.minimum(cover[cleared], hc["clearing_cover"])
+    woody = remove_small_holes((woody | added) & ~cleared, area_threshold=min_px)
+    opening = (opening | cleared) & ~added & ~woody
+    return cover.astype(np.float32), woody, opening
+
+
 def compute(inputs: dict[str, np.ndarray], grid: Grid, cfg: dict[str, Any], parking_px: list[tuple[int, int]]) -> dict[str, Any]:
     """All factor math for one grid. Separated from I/O so it can run on fixtures."""
     g = grid.ground_res
@@ -60,6 +87,8 @@ def compute(inputs: dict[str, np.ndarray], grid: Grid, cfg: dict[str, Any], park
 
     food, d_crop = F.food_factor(crop, F.isin(nlcd, F.DECIDUOUS).astype(np.float32), g, cfg["food"])
     cover = F.cover_factor(nlcd, nwi, cfg["cover"])
+    if "ndvi" in inputs:
+        cover, woody, opening = refine_cover(cover, woody, opening, water, inputs["ndvi"], inputs["tex"], cfg["hd"], g)
     terrain, tdetail = F.terrain_factor(dem, slope, aspect, g, cfg["terrain"])
     thermal = F.thermal_factor(aspect, slope, nlcd, cover)
     edge = F.edge_factor(woody, opening, g, cfg["edge"])
@@ -84,7 +113,12 @@ def compute(inputs: dict[str, np.ndarray], grid: Grid, cfg: dict[str, Any], park
         open_edge = opening & ndi.binary_dilation(woody, iterations=2)
         food_pts = F.pick_peaks(ndi.gaussian_filter(open_edge.astype(np.float32), 2), buf & open_edge, cc["max_food"], spacing, 0.01)
     cost = F.movement_cost(cover, slope, water, developed, roads, cc["cost"])
+    # Smoothing is defined in base-grid (~13.5 m) pixels; scale it for finer grids.
+    res_scale = max(1.0, BASE_RES_M / g)
     corr = F.corridor_factor(cost, beds, food_pts, cc["links_per_bed"], cc["smooth_px"])
+    if res_scale > 1.5:
+        corr = ndi.gaussian_filter(corr, cc["smooth_px"] * res_scale * 0.5)
+        corr = corr / corr.max() if corr.max() > 0 else corr
     narrow = F.narrowness(woody, g)
     funnel = np.clip(corr * (0.5 + 0.5 * narrow) + 0.5 * tdetail["saddle"] * corr.clip(0.2, 1), 0, 1)
     corridor = np.clip(0.75 * corr + 0.25 * funnel, 0, 1).astype(np.float32)
@@ -134,21 +168,35 @@ def compute(inputs: dict[str, np.ndarray], grid: Grid, cfg: dict[str, Any], park
     }
 
 
-def process_property(feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayers, dnr_parking: list[tuple[float, float]], out_dir: Path) -> dict[str, Any] | None:
+def choose_grid(bounds: tuple[float, float, float, float], cfg: dict[str, Any], hd: bool) -> Grid:
+    """Standard z13 grid, or the finest high-detail zoom that stays under the pixel cap."""
+    gc = cfg["grid"]
+    if hd:
+        hc = cfg["hd"]
+        for z in range(int(hc["zoom"]), int(gc["zoom"]), -1):
+            g = grid_for_bbox(bounds, gc["buffer_m"], z)
+            if g.shape[0] * g.shape[1] <= hc["max_pixels"]:
+                return g
+    return grid_for_bbox(bounds, gc["buffer_m"], gc["zoom"])
+
+
+def process_property(
+    feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayers, dnr_parking: list[tuple[float, float]], out_dir: Path, hd: bool = False
+) -> dict[str, Any] | None:
     props = feature["properties"]
     pid = props["id"]
     out_json = out_dir / f"{pid}.json"
-    if out_json.exists():
-        prev = json.loads(out_json.read_text())
-        if prev.get("pipeline_version") == PIPELINE_VERSION:
-            return prev
-
     geom = shape(feature["geometry"])
     if geom.is_empty:
         return None
     gc = cfg["grid"]
-    grid = grid_for_bbox(geom.bounds, gc["buffer_m"], gc["zoom"])
-    if max(grid.nx, grid.ny) > gc["max_tiles_side"]:
+    grid = choose_grid(geom.bounds, cfg, hd)
+    if out_json.exists():
+        prev = json.loads(out_json.read_text())
+        # Reuse cached output unless the version or the detail level changed.
+        if prev.get("pipeline_version") == PIPELINE_VERSION and prev.get("grid", [None])[0] == grid.z:
+            return prev
+    if not hd and max(grid.nx, grid.ny) > gc["max_tiles_side"]:
         log.warning("%s: grid %dx%d too large, skipping", pid, grid.nx, grid.ny)
         return None
 
@@ -161,7 +209,16 @@ def process_property(feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayer
 
     src = cfg["sources"]
     t = time.time()
-    dem = fetch_dem(src["dem"], grid)
+    dem_src = "USGS 3DEP"
+    extra: dict[str, np.ndarray] = {}
+    if hd:
+        dem, dem_src = fetch_dem_hd(cfg["hd"]["dem"], src["dem"], grid)
+        try:
+            extra["ndvi"], extra["tex"] = fetch_naip_ndvi_texture(cfg["hd"]["naip"], grid)
+        except Exception as e:  # noqa: BLE001 - HD still works on DEM detail alone
+            log.warning("%s: NAIP refinement skipped: %s", pid, str(e)[:200])
+    else:
+        dem = fetch_dem(src["dem"], grid)
     t_dem = time.time()
     cdl, cdl_src = fetch_cdl(src, grid, props.get("state") or "MN")
     t_cdl = time.time()
@@ -184,15 +241,15 @@ def process_property(feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayer
             parking_px.append((r, c))
 
     res = compute(
-        {"dem": dem, "nlcd": nlcd, "cdl": cdl, "nwi": nwi, "roads": roads, "busy": busy, "quiet": quiet, "prop": prop_mask, "buf": buf_mask},
+        {"dem": dem, "nlcd": nlcd, "cdl": cdl, "nwi": nwi, "roads": roads, "busy": busy, "quiet": quiet, "prop": prop_mask, "buf": buf_mask, **extra},
         grid,
         cfg,
         parking_px,
     )
     t_comp = time.time()
     log.info(
-        "%s grid %dx%d tiles | dem %.1fs cdl %.1fs (%s) nlcd %.1fs nwi %.1fs compute %.1fs",
-        pid, grid.nx, grid.ny, t_dem - t, t_cdl - t_dem, cdl_src, t_nlcd - t_cdl, t_nwi - t_nlcd, t_comp - t_nwi,
+        "%s z%d grid %dx%d tiles | dem %.1fs cdl %.1fs (%s) nlcd %.1fs nwi %.1fs compute %.1fs",
+        pid, grid.z, grid.nx, grid.ny, t_dem - t, t_cdl - t_dem, cdl_src, t_nlcd - t_cdl, t_nwi - t_nlcd, t_comp - t_nwi,
     )
     cands = build_candidates(res, cfg)
     summary = property_summary(res, cfg, props)
@@ -213,7 +270,8 @@ def process_property(feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayer
         "name": props.get("name"),
         "summary": summary,
         "candidates": cands,
-        "sources": {"cdl": cdl_src, "osm": osm.available},
+        "sources": {"cdl": cdl_src, "osm": osm.available, "dem": dem_src, "naip": "ndvi" in extra},
+        "hd": hd,
         "grid": [grid.z, grid.x0, grid.y0, grid.nx, grid.ny],
     }
     out_json.write_text(json.dumps(out))
