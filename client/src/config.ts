@@ -18,6 +18,8 @@ export const SERVICES = {
   dnrWmaFacilities: `${MNGEO}/us_mn_state_dnr/struc_dnr_wld_mgmt_areas_pub/FeatureServer/0`,
   // Opt-in open county parcels compiled by MnGeo (all 87 MN counties). Geometry only is requested.
   mnParcels: `${MNGEO}/us_mn_state_mngeo/plan_parcels_open/FeatureServer/1`,
+  // Government-owned parcels (State, County Fee, Tax Forfeit, Federal, Tribal) from the same county data.
+  mnGovLand: `${MNGEO}/us_mn_state_mngeo/plan_gov_own_open/FeatureServer/0`,
 };
 
 /** How long cached public-land data is trusted before a background refresh. */

@@ -76,6 +76,7 @@ export function ScoutLayerControls({
       </div>
       <p className="muted small">
         Model run {meta.generated.slice(0, 10)} · {meta.counts.properties} properties · ~{meta.groundResolutionM} m cells
+        {meta.hd ? ` · high detail (~${meta.hd.groundResolutionM} m, 1 m lidar + NAIP) in DPA ${meta.hd.dpas.join(", ")}` : ""}
       </p>
     </>
   );
@@ -128,6 +129,7 @@ export function PointCard({
                   ))}
               </ul>
               <p className="small muted">
+                {info.b.resolutionM ? `${info.b.resolutionM < 5 ? "High-detail " : ""}${info.b.resolutionM} m cell · ` : ""}
                 Walk from parking: {info.b.accessMinutes === null ? "unknown" : `~${info.b.accessMinutes} min`}
               </p>
             </>

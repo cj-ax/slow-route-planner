@@ -193,31 +193,19 @@ def write_pmtiles(path: Path, tiles: dict[tuple[int, int, int], bytes], name: st
     return path.stat().st_size
 
 
-def merge(work_dir: Path, out_dir: Path, cfg: dict[str, Any], properties: dict[str, Any]) -> dict[str, Any]:
+def write_archives(
+    store: TileStore, zmax: int, out_dir: Path, attribution: str, fixed_stretch: dict[str, list[float]] | None = None
+) -> tuple[dict[str, int], dict[str, list[float]]]:
+    """Heat (per season), corridors and factor archives for one TileStore at zoom zmax."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    store = TileStore()
-    results: list[dict[str, Any]] = []
-    for js in sorted(work_dir.glob("*.json")):
-        try:
-            r = json.loads(js.read_text())
-        except json.JSONDecodeError:
-            continue
-        if "summary" not in r:
-            continue
-        npz = js.with_suffix(".npz")
-        if not npz.exists():
-            continue
-        load_npz_into(store, npz)
-        results.append(r)
-    log.info("merged %d properties into %d z13 tiles", len(results), len(store.data))
-    zmax = int(cfg["grid"]["zoom"])
-    attribution = "Deer Scout model from USGS 3DEP, USDA NASS CDL, MRLC NLCD, USFWS NWI, PAD-US, MN DNR, (c) OpenStreetMap contributors"
-
     sizes: dict[str, int] = {}
     stretch: dict[str, list[float]] = {}
     for s in SEASONS:
-        vals = np.concatenate([d[f"s_{s}"][store.prio[k] == 2] for k, d in store.data.items()]) if store.data else np.zeros(1)
-        lo, hi = (float(np.percentile(vals, 2)), float(np.percentile(vals, 99.5))) if vals.size > 10 else (0.0, 255.0)
+        if fixed_stretch:
+            lo, hi = fixed_stretch[s][0] * 255, fixed_stretch[s][1] * 255
+        else:
+            vals = np.concatenate([d[f"s_{s}"][store.prio[k] == 2] for k, d in store.data.items()]) if store.data else np.zeros(1)
+            lo, hi = (float(np.percentile(vals, 2)), float(np.percentile(vals, 99.5))) if vals.size > 10 else (0.0, 255.0)
         hi = max(hi, lo + 1)
         stretch[s] = [lo / 255, hi / 255]
         base = {k: (np.clip((d[f"s_{s}"].astype(np.float32) - lo) / (hi - lo), 0, 1), store.prio[k] == 2) for k, d in store.data.items()}
@@ -252,12 +240,62 @@ def merge(work_dir: Path, out_dir: Path, cfg: dict[str, Any], properties: dict[s
         Image.fromarray(img, mode="RGB").save(buf, format="PNG", optimize=True)
         ftiles[(zmax, x, y)] = buf.getvalue()
     sizes["factors"] = write_pmtiles(out_dir / "factors.pmtiles", ftiles, "factors", attribution)
+    return sizes, stretch
+
+
+def merge(work_dir: Path, out_dir: Path, cfg: dict[str, Any], properties: dict[str, Any]) -> dict[str, Any]:
+    """Standard-zoom properties go to out_dir; high-detail ones (cfg.hd.zoom) to out_dir/hd.
+
+    The two never overlap, so the app can draw both archive sets at every zoom.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    zstd = int(cfg["grid"]["zoom"])
+    zhd = int(cfg.get("hd", {}).get("zoom", 0))
+    store, hd_store = TileStore(), TileStore()
+    results: list[dict[str, Any]] = []
+    hd_ids: list[str] = []
+    for js in sorted(work_dir.glob("*.json")):
+        try:
+            r = json.loads(js.read_text())
+        except json.JSONDecodeError:
+            continue
+        if "summary" not in r:
+            continue
+        npz = js.with_suffix(".npz")
+        if not npz.exists():
+            continue
+        z = int(r.get("grid", [zstd])[0])
+        if z == zstd:
+            load_npz_into(store, npz)
+        elif z == zhd:
+            load_npz_into(hd_store, npz)
+            hd_ids.append(r["id"])
+        else:
+            log.warning("%s: unexpected grid zoom %d, skipped", r["id"], z)
+            continue
+        results.append(r)
+    log.info("merged %d properties: %d z%d tiles, %d high-detail z%d tiles", len(results), len(store.data), zstd, len(hd_store.data), zhd)
+    zmax = zstd
+    attribution = "Deer Scout model from USGS 3DEP, MnTopo lidar, USDA NAIP, USDA NASS CDL, MRLC NLCD, USFWS NWI, PAD-US, MN DNR, (c) OpenStreetMap contributors"
+    sizes, stretch = write_archives(store, zstd, out_dir, attribution)
+    hd_meta = None
+    if hd_store.data:
+        hd_sizes, _ = write_archives(hd_store, zhd, out_dir / "hd", attribution, fixed_stretch=stretch)
+        sizes.update({f"hd/{k}": v for k, v in hd_sizes.items()})
+        b = [tile_bounds_lonlat(zhd, x, y) for x, y in hd_store.data]
+        hd_meta = {
+            "zoom": {"min": MIN_Z, "max": zhd},
+            "dpas": cfg["hd"].get("dpas", []),
+            "properties": sorted(hd_ids),
+            "bounds": [min(v[0] for v in b), min(v[1] for v in b), max(v[2] for v in b), max(v[3] for v in b)],
+            "groundResolutionM": round(res_m(zhd) * math.cos(math.radians(45.4)), 1),
+        }
 
     rankings = []
     features = []
     for r in results:
         p = properties.get(r["id"], {})
-        rankings.append({"id": r["id"], "name": r.get("name"), **r["summary"], "sources": r.get("sources", {})})
+        rankings.append({"id": r["id"], "name": r.get("name"), **r["summary"], "sources": r.get("sources", {}), "hd": bool(r.get("hd"))})
         for cnd in r["candidates"]:
             props = {k: v for k, v in cnd.items() if k not in ("lon", "lat")}
             props["pid"] = r["id"]
@@ -278,7 +316,8 @@ def merge(work_dir: Path, out_dir: Path, cfg: dict[str, Any], properties: dict[s
             "blocks": [["food", "cover", "edge"], ["corridor", "pressure", "terrain"], ["thermal", "accessMinutes", "mask"]],
             "scale": "0..255 = 0..1, except accessMinutes (raw minutes, 255 = unknown/over cap) and mask (255 property, 128 buffer)",
         },
-        "counts": {"properties": len(results), "z13Tiles": len(store.data), "candidates": len(features)},
+        "counts": {"properties": len(results), "z13Tiles": len(store.data), "hdTiles": len(hd_store.data), "candidates": len(features)},
+        "hd": hd_meta,
         "sizes": sizes,
         "groundResolutionM": round(res_m(zmax) * math.cos(math.radians(44.86)), 1),
     }

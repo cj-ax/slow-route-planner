@@ -15,8 +15,8 @@ import { LOG_TYPES, loadLogs, saveLog, deleteLog, type ScoutLog, type Season } f
 import { loadPref, loadScalar, savePref } from "./lib/prefs";
 import { WIND_DIRS, type WindDir } from "./lib/wind";
 import { Protocol } from "pmtiles";
-import { addScoutLayers, agencyFilter, buildStyle, CANDIDATES_SOURCE, LAND_SOURCE, LOGS_SOURCE, PARCELS_SOURCE, PARKING_SOURCE, SEASONS_LIST } from "./map/style";
-import { PARCEL_MIN_ZOOM, parcelsForView } from "./lib/parcels";
+import { addScoutLayers, agencyFilter, buildStyle, CANDIDATES_SOURCE, LAND_SOURCE, GOVLAND_SOURCE, LOGS_SOURCE, PARCELS_SOURCE, PARKING_SOURCE, SEASONS_LIST } from "./map/style";
+import { GOV_TYPES, govLandLayer, govLandNote, parcelsLayer, PARCEL_MIN_ZOOM, type GovType } from "./lib/parcels";
 import {
   breakdownAt,
   loadCandidates,
@@ -79,6 +79,10 @@ export function App() {
   const [pointInfo, setPointInfo] = useState<{ lngLat: LonLat; loading: boolean; b: PointBreakdown | null } | null>(null);
   const [cand, setCand] = useState<CandidateProps | null>(null);
   const [parcelsOn, setParcelsOn] = useState<boolean>(() => loadScalar("parcels", false));
+  const [govTypes, setGovTypes] = useState<Record<GovType, boolean>>(() =>
+    loadPref("govTypes", Object.fromEntries(Object.entries(GOV_TYPES).map(([k, v]) => [k, v.defaultOn])) as Record<GovType, boolean>),
+  );
+  const [govInfo, setGovInfo] = useState<{ type: string; county: string } | null>(null);
 
   const [gps, setGps] = useState<GeolocationPosition | null>(null);
   const [gpsErr, setGpsErr] = useState<string | null>(null);
@@ -189,17 +193,21 @@ export function App() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !meta) return;
-    addScoutLayers(map, meta.zoom);
+    addScoutLayers(map, meta);
   }, [mapReady, meta]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !meta || !map.getLayer("heat-rut")) return;
     for (const s of SEASONS_LIST) {
-      map.setLayoutProperty(`heat-${s}`, "visibility", scoutLayers.heat && s === season ? "visible" : "none");
-      map.setPaintProperty(`heat-${s}`, "raster-opacity", scoutLayers.heatOpacity);
+      for (const id of [`heat-${s}`, `heat-hd-${s}`]) {
+        if (!map.getLayer(id)) continue;
+        map.setLayoutProperty(id, "visibility", scoutLayers.heat && s === season ? "visible" : "none");
+        map.setPaintProperty(id, "raster-opacity", scoutLayers.heatOpacity);
+      }
     }
-    map.setLayoutProperty("corridors", "visibility", scoutLayers.corridors ? "visible" : "none");
+    for (const id of ["corridors", "corridors-hd"])
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", scoutLayers.corridors ? "visible" : "none");
     map.setLayoutProperty("cand-stand", "visibility", scoutLayers.stands ? "visible" : "none");
     map.setLayoutProperty("cand-bedding", "visibility", scoutLayers.bedding ? "visible" : "none");
     map.setLayoutProperty("cand-funnel", "visibility", scoutLayers.funnels ? "visible" : "none");
@@ -235,7 +243,8 @@ export function App() {
     const refresh = () => {
       if (map.getZoom() < PARCEL_MIN_ZOOM) return;
       const b = map.getBounds();
-      parcelsForView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()])
+      parcelsLayer
+        .forView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()])
         .then((fc) => !cancelled && (map.getSource(PARCELS_SOURCE) as GeoJSONSource).setData(fc))
         .catch(() => undefined);
     };
@@ -246,6 +255,34 @@ export function App() {
       map.off("moveend", refresh);
     };
   }, [parcelsOn, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const on = (Object.keys(govTypes) as GovType[]).filter((k) => govTypes[k]);
+    const vis = on.length ? "visible" : "none";
+    for (const l of ["govland-fill", "govland-line"]) {
+      map.setLayoutProperty(l, "visibility", vis);
+      map.setFilter(l, ["in", ["get", "govt_own"], ["literal", on]]);
+    }
+    savePref("govTypes", govTypes);
+    if (!on.length) return;
+    let cancelled = false;
+    const refresh = () => {
+      if (map.getZoom() < govLandLayer.minZoom) return;
+      const b = map.getBounds();
+      govLandLayer
+        .forView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()])
+        .then((fc) => !cancelled && (map.getSource(GOVLAND_SOURCE) as GeoJSONSource).setData(fc))
+        .catch(() => undefined);
+    };
+    refresh();
+    map.on("moveend", refresh);
+    return () => {
+      cancelled = true;
+      map.off("moveend", refresh);
+    };
+  }, [govTypes, mapReady]);
 
   const propsById = useMemo(() => new Map(land?.properties.map((p) => [p.id, p]) ?? []), [land]);
   const selected = selectedId ? propsById.get(selectedId) ?? null : null;
@@ -294,10 +331,12 @@ export function App() {
         setSheet("cand");
         return;
       }
+      const govHit = map.getLayer("govland-fill") ? map.queryRenderedFeatures(e.point, { layers: ["govland-fill"] })[0] : undefined;
+      setGovInfo(govHit ? { type: String(govHit.properties?.govt_own ?? ""), county: String(govHit.properties?.co_name ?? "") } : null);
       if (meta) {
         const ll: LonLat = [e.lngLat.lng, e.lngLat.lat];
         setPointInfo({ lngLat: ll, loading: true, b: null });
-        breakdownAt(ll[0], ll[1], meta.zoom.max).then((b) =>
+        breakdownAt(ll[0], ll[1], meta).then((b) =>
           setPointInfo((cur) => (cur && cur.lngLat === ll ? { ...cur, loading: false, b } : cur)),
         );
       }
@@ -486,6 +525,16 @@ export function App() {
         </button>
       </nav>
       {gpsErr && <div className="toast">GPS: {gpsErr}</div>}
+      {govInfo && (
+        <div className="point-card" style={pointInfo && meta ? { top: "auto", bottom: "calc(var(--tab-h) + var(--disc-h) + 20px)" } : undefined}>
+          <button className="point-card__close" onClick={() => setGovInfo(null)} aria-label="Close">
+            ✕
+          </button>
+          <strong>{GOV_TYPES[govInfo.type as GovType]?.label ?? govInfo.type}</strong>
+          <span className="muted small"> · {govInfo.county} County</span>
+          <p className="small">{govLandNote(govInfo.type)}</p>
+        </div>
+      )}
       {pointInfo && meta && <PointCard info={pointInfo} meta={meta} season={season} onClose={() => setPointInfo(null)} />}
 
       <div className={`sheet ${sheet !== "none" ? "sheet--open" : ""}`}>
@@ -508,6 +557,8 @@ export function App() {
             setScoutLayers={setScoutLayers}
             parcelsOn={parcelsOn}
             setParcelsOn={setParcelsOn}
+            govTypes={govTypes}
+            setGovTypes={setGovTypes}
           />
         )}
         {sheet === "list" && (

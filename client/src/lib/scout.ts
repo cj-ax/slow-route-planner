@@ -20,8 +20,15 @@ export interface ScoutMeta {
   zoom: { min: number; max: number };
   seasons: Record<Season, SeasonMeta>;
   stretch: Record<Season, [number, number]>;
-  counts: { properties: number; z13Tiles: number; candidates: number };
+  counts: { properties: number; z13Tiles: number; candidates: number; hdTiles?: number };
   groundResolutionM: number;
+  hd?: {
+    zoom: { min: number; max: number };
+    dpas: number[];
+    properties: string[];
+    bounds: [number, number, number, number];
+    groundResolutionM: number;
+  } | null;
 }
 
 export interface Ranking {
@@ -32,7 +39,8 @@ export interface Ranking {
   walkMin: number | null;
   walkMedianMin: number | null;
   hasParking: boolean;
-  sources?: { cdl?: string; osm?: boolean };
+  sources?: { cdl?: string; osm?: boolean; dem?: string; naip?: boolean };
+  hd?: boolean;
 }
 
 export interface WindInfo {
@@ -94,7 +102,7 @@ export function windMessage(p: CandidateProps, wind: WindDir | ""): string {
 
 // ---------- per-pixel factor lookup (tap for breakdown) ----------
 
-let factorArchive: PMTiles | null = null;
+const archives = new Map<string, PMTiles>();
 const tileCache = new Map<string, ImageData | null>();
 
 function lonLatToPixel(lon: number, lat: number, z: number): { x: number; y: number; px: number; py: number } {
@@ -107,13 +115,17 @@ function lonLatToPixel(lon: number, lat: number, z: number): { x: number; y: num
   return { x, y, px: Math.floor((fx - x) * 256), py: Math.floor((fy - y) * 256) };
 }
 
-async function factorTile(z: number, x: number, y: number): Promise<ImageData | null> {
-  const key = `${z}/${x}/${y}`;
+async function factorTile(file: string, z: number, x: number, y: number): Promise<ImageData | null> {
+  const key = `${file}/${z}/${x}/${y}`;
   if (tileCache.has(key)) return tileCache.get(key)!;
-  factorArchive ??= new PMTiles(dataUrl("factors.pmtiles"));
+  let archive = archives.get(file);
+  if (!archive) {
+    archive = new PMTiles(dataUrl(file));
+    archives.set(file, archive);
+  }
   let img: ImageData | null = null;
   try {
-    const t = await factorArchive.getZxy(z, x, y);
+    const t = await archive.getZxy(z, x, y);
     if (t?.data) {
       const bmp = await createImageBitmap(new Blob([t.data], { type: "image/png" }), {
         premultiplyAlpha: "none",
@@ -139,6 +151,8 @@ export interface PointBreakdown {
   accessMinutes: number | null;
   inProperty: boolean;
   inBuffer: boolean;
+  /** Cell size of the data this came from (high-detail areas are ~1.7 m). */
+  resolutionM?: number;
 }
 
 /** Decode the factor tile pixel at a location. Layout: three 256-row RGB blocks. */
@@ -161,10 +175,27 @@ export function decodeFactorPixel(img: ImageData, px: number, py: number): Point
   };
 }
 
-export async function breakdownAt(lon: number, lat: number, z: number): Promise<PointBreakdown | null> {
+async function lookup(file: string, lon: number, lat: number, z: number): Promise<PointBreakdown | null> {
   const { x, y, px, py } = lonLatToPixel(lon, lat, z);
-  const img = await factorTile(z, x, y);
+  const img = await factorTile(file, z, x, y);
   return img ? decodeFactorPixel(img, px, py) : null;
+}
+
+export function inBounds(b: [number, number, number, number], lon: number, lat: number): boolean {
+  return lon >= b[0] && lon <= b[2] && lat >= b[1] && lat <= b[3];
+}
+
+/** High-detail data wins where it exists; otherwise the standard ~13.5 m model. */
+export async function breakdownAt(lon: number, lat: number, meta: ScoutMeta): Promise<PointBreakdown | null> {
+  const hd =
+    meta.hd && inBounds(meta.hd.bounds, lon, lat)
+      ? await lookup("hd/factors.pmtiles", lon, lat, meta.hd.zoom.max).then((b) => b && { ...b, resolutionM: meta.hd!.groundResolutionM })
+      : null;
+  if (hd?.inProperty) return hd;
+  const std = await lookup("factors.pmtiles", lon, lat, meta.zoom.max).then((b) => b && { ...b, resolutionM: meta.groundResolutionM });
+  // Inside another property the standard model wins; in buffers prefer the finer data.
+  if (std?.inProperty) return std;
+  return hd ?? std;
 }
 
 /** Same formula as pipeline factors.season_score. */

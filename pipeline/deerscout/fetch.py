@@ -274,3 +274,35 @@ def rasterize_geoms(geoms, grid: Grid, all_touched: bool = True) -> np.ndarray:
     return rasterize(
         [(g, 1) for g in geoms], out_shape=grid.shape, transform=transform_for(grid), fill=0, dtype="uint8", all_touched=all_touched
     ).astype(bool)
+
+
+def fetch_dem_hd(hd_url: str, fallback_url: str, grid: Grid) -> tuple[np.ndarray, str]:
+    """MnTopo 1 m lidar DEM, falling back to 3DEP if the state service fails or has gaps."""
+    try:
+        dem = fetch_dem(hd_url, grid)
+        if np.ptp(dem) > 0:
+            return dem, "MnTopo 1 m lidar DEM"
+    except Exception as e:  # noqa: BLE001
+        log.warning("MnTopo DEM failed, using 3DEP: %s", str(e)[:200])
+    return fetch_dem(fallback_url, grid), "USGS 3DEP"
+
+
+def fetch_naip_ndvi_texture(url: str, grid: Grid) -> tuple[np.ndarray, np.ndarray]:
+    """NAIP 4-band on the grid -> (NDVI, local std-dev of NIR over a 5x5 window)."""
+    from scipy import ndimage as ndi
+
+    ndvi = np.zeros(grid.shape, np.float32)
+    tex = np.zeros(grid.shape, np.float32)
+    for sub, r0, c0 in _blocks(grid):
+        raw = _export_image(url, sub, {"interpolation": "RSP_BilinearInterpolation"})
+        with MemoryFile(raw) as mf, mf.open() as ds:
+            a = ds.read().astype(np.float32)
+        if a.shape[0] < 4:
+            raise RuntimeError("NAIP service returned fewer than 4 bands")
+        red, nir = a[0], a[3]
+        h, w = sub.shape
+        nd = (nir - red) / (nir + red + 1e-6)
+        sd = np.sqrt(np.maximum(ndi.uniform_filter(nir**2, 5) - ndi.uniform_filter(nir, 5) ** 2, 0))
+        ndvi[r0 : r0 + h, c0 : c0 + w] = nd[:h, :w]
+        tex[r0 : r0 + h, c0 : c0 + w] = sd[:h, :w]
+    return ndvi, tex

@@ -1,13 +1,15 @@
 import type { Map as MLMap, StyleSpecification } from "maplibre-gl";
-import { dataUrl } from "../lib/scout";
+import { dataUrl, type ScoutMeta } from "../lib/scout";
 import { BASE_LAYERS, OVERLAYS, type BaseLayerId, type OverlayId } from "../config";
 import { AGENCIES, type AgencyKey } from "../lib/land";
+import { GOV_TYPES, GOVLAND_MIN_ZOOM } from "../lib/parcels";
 
 export const LAND_SOURCE = "land";
 export const PARKING_SOURCE = "parking";
 export const LOGS_SOURCE = "logs";
 export const AREA_SOURCE = "study-area";
 export const PARCELS_SOURCE = "parcels";
+export const GOVLAND_SOURCE = "govland";
 
 const FONT = ["Open Sans Semibold"];
 
@@ -66,9 +68,27 @@ export function buildStyle(base: BaseLayerId, studyArea: GeoJSON.Polygon): Style
   sources[LAND_SOURCE] = { type: "geojson", data: empty, promoteId: "pid", tolerance: 0.5 };
   sources[PARKING_SOURCE] = { type: "geojson", data: empty };
   sources[PARCELS_SOURCE] = { type: "geojson", data: empty, tolerance: 0.3 };
+  sources[GOVLAND_SOURCE] = { type: "geojson", data: empty, tolerance: 0.4 };
   sources[LOGS_SOURCE] = { type: "geojson", data: empty };
 
+  const govColor = ["match", ["get", "govt_own"], ...Object.entries(GOV_TYPES).flatMap(([k, v]) => [k, v.color]), "#888"];
   layers.push(
+    {
+      id: "govland-fill",
+      type: "fill",
+      source: GOVLAND_SOURCE,
+      minzoom: GOVLAND_MIN_ZOOM,
+      layout: { visibility: "none" },
+      paint: { "fill-color": govColor as never, "fill-opacity": 0.18 },
+    },
+    {
+      id: "govland-line",
+      type: "line",
+      source: GOVLAND_SOURCE,
+      minzoom: GOVLAND_MIN_ZOOM,
+      layout: { visibility: "none" },
+      paint: { "line-color": govColor as never, "line-width": 1.5, "line-dasharray": [2, 1] },
+    },
     {
       id: "parcels",
       type: "line",
@@ -184,8 +204,9 @@ export type { OverlayId };
 export const CANDIDATES_SOURCE = "candidates";
 export const SEASONS_LIST = ["early", "rut", "late"] as const;
 
-export function addScoutLayers(map: MLMap, zoom: { min: number; max: number }): void {
+export function addScoutLayers(map: MLMap, meta: ScoutMeta): void {
   if (map.getSource("heat-rut")) return;
+  const zoom = meta.zoom;
   for (const s of SEASONS_LIST) {
     map.addSource(`heat-${s}`, {
       type: "raster",
@@ -216,6 +237,32 @@ export function addScoutLayers(map: MLMap, zoom: { min: number; max: number }): 
     { id: "corridors", type: "raster", source: "corridors", layout: { visibility: "none" }, paint: { "raster-opacity": 0.8 } },
     "land-line",
   );
+  // High-detail archives (e.g. DPA 227 at ~1.7 m). They cover different properties than the
+  // standard set, so both draw at every zoom without double coloring.
+  if (meta.hd) {
+    const hz = meta.hd.zoom;
+    for (const s of SEASONS_LIST) {
+      map.addSource(`heat-hd-${s}`, {
+        type: "raster",
+        url: `pmtiles://${dataUrl(`hd/heat-${s}.pmtiles`)}`,
+        tileSize: 256,
+        minzoom: hz.min,
+        maxzoom: hz.max,
+      });
+      map.addLayer(
+        {
+          id: `heat-hd-${s}`,
+          type: "raster",
+          source: `heat-hd-${s}`,
+          layout: { visibility: "none" },
+          paint: { "raster-opacity": 0.75, "raster-resampling": "nearest", "raster-fade-duration": 0 },
+        },
+        "land-line",
+      );
+    }
+    map.addSource("corridors-hd", { type: "raster", url: `pmtiles://${dataUrl("hd/corridors.pmtiles")}`, tileSize: 256, minzoom: hz.min, maxzoom: hz.max });
+    map.addLayer({ id: "corridors-hd", type: "raster", source: "corridors-hd", layout: { visibility: "none" }, paint: { "raster-opacity": 0.8 } }, "land-line");
+  }
   map.addSource(CANDIDATES_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   map.addLayer(
     {

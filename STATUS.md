@@ -5,9 +5,9 @@
 4. Pick a **Season** (Early archery, Rut, Late) at the top. The heat map, stand candidates and scores switch with it.
 5. Set **Wind from**. Stand dots turn green (good), amber (marginal) or red (bad). Tap a stand for reasons, best winds and entry advice.
 6. Tap anywhere on scored land for a factor breakdown (food, cover, edge, corridor, pressure, terrain) and walk minutes.
-7. Layers: heat opacity, travel corridors, bedding and funnel candidates, CDL / NLCD / NWI overlays, and MN parcel lines (zoom 14+).
+7. Layers: heat opacity, corridors, candidates, CDL / NLCD / NWI, MN parcel lines (zoom 14+), and government-owned land incl. tax-forfeit (zoom 11+).
 8. In the field: tap ◎ for GPS, tap ＋ or long-press to log sign. Export logs (GPX or GeoJSON) from the Log tab.
-9. First check: a WMA you know well. Do the stands and corridors match what you have seen? Weights live in `pipeline/config.yaml`.
+9. DPA 227 properties are marked **HD**: ~1.7 m model from 1 m lidar and NAIP. First check: a WMA you know well. Do the stands and corridors match what you have seen? Weights live in `pipeline/config.yaml`.
 10. It is a scouting aid, not a success predictor. Verify boundaries, regulations and access with MN DNR (WI DNR east of the St. Croix).
 
 ---
@@ -30,12 +30,15 @@ https://cj-ax.github.io/slow-route-planner/ (HTTP 200, verified with a headless 
 - **M4**: season toggle, wind-aware stands with warnings, 35 app tests plus 18 pipeline tests (including an
   end-to-end fixture smoke test), lint and type checks in CI, docs.
 - **Parcel lines**: MN open county parcels, outlines only, viewport-loaded at zoom 14+.
+- **Government-owned land**: MnGeo tax-forfeit, county, state, federal and tribal parcels with access notes.
+- **DPA 227 high detail**: z16 (~1.7 m), MnTopo 1 m lidar DEM, NAIP NDVI/texture cover refinement. Separate
+  `data/hd/` archives (800 tiles). Published data total 88 MB.
 
 ## Stubbed / not done
 - 1 m lidar for the top properties (3DEP ~10 m is used everywhere).
 - 16 very spread-out property groups (over 24 z13 tiles across, e.g. statewide habitat-area groupings) are not scored.
 - Heat, corridor and factor tiles are not cached for offline use (base tiles are).
-- Wisconsin parcels and the MnGeo government-owned-lands layer are not added.
+- Wisconsin parcels (skipped by request).
 - See KNOWN_LIMITS.md.
 
 ## Actions runs
@@ -46,6 +49,7 @@ https://cj-ax.github.io/slow-route-planner/ (HTTP 200, verified with a headless 
 | 42576970717, 42576983241 | pages-hello | failure (environment branch rule) |
 | 42634587160 | deploy on main (ci + Pages deploy) | success |
 | 42641504190 | pipeline pilot (3 properties) | success |
+| 42688606413 | pipeline all + DPA 227 high detail (800 z16 tiles), 88 MB | success |
 | 42658790520 | pipeline all, 8 shards, 519 properties, 60 MB | success |
 | 42578745118 | deploy: `ci` job (lint, typecheck, test, build) on deer-scout | success; `deploy` job skipped (non-main) |
 

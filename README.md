@@ -31,6 +31,9 @@ before hunting. Data may be outdated.
 - **Ranked property list**: season score, size, walk time from parking, straight-line
   distance from Victoria, top reasons. Filters for distance, size and score.
 - **Tap anywhere** inside scored land for a factor-by-factor breakdown of the score.
+- **High detail in Deer Permit Area 227** (~1.7 m from 1 m lidar and NAIP), marked HD in the list.
+- **Government-owned land** (tax-forfeit, county, state, federal, tribal) and **MN parcel lines** as context
+  layers. They do not grant permission to hunt.
 
 ## Run locally
 ```bash
