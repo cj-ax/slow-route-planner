@@ -50,7 +50,9 @@ def compute(inputs: dict[str, np.ndarray], grid: Grid, cfg: dict[str, Any], park
 
     slope, aspect = F.slope_aspect(dem, g)
     crop = F.isin(cdl, cfg["food"]["crop_codes"])
-    # NLCD cultivated cells with no CDL crop code still count as ag for edges, not food.
+    if not cdl.any():
+        # No CDL coverage (e.g. Wisconsin when CropScape is down): NLCD cultivated crops and hay.
+        crop = F.isin(nlcd, F.PASTURE_CROP)
     water = F.isin(nlcd, F.WATER) | (nwi == F.NWI_WATER)
     developed = F.isin(nlcd, F.DEVELOPED)
     woody = F.isin(nlcd, F.FOREST + F.WOODY_WETLAND + F.SHRUB) | np.isin(nwi, [F.NWI_SHRUB, F.NWI_FORESTED])
@@ -161,7 +163,7 @@ def process_property(feature: dict[str, Any], cfg: dict[str, Any], osm: OsmLayer
     t = time.time()
     dem = fetch_dem(src["dem"], grid)
     t_dem = time.time()
-    cdl, cdl_src = fetch_cdl(src, grid)
+    cdl, cdl_src = fetch_cdl(src, grid, props.get("state") or "MN")
     t_cdl = time.time()
     nlcd = fetch_nlcd(src, grid)
     t_nlcd = time.time()

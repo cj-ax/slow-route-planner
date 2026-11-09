@@ -114,3 +114,31 @@ def test_grid_alignment():
     assert ((minx + 20037508.342789244) / span) == pytest.approx(round((minx + 20037508.342789244) / span))
     assert 12 < g.ground_res < 15
     assert g.shape == (g.ny * 256, g.nx * 256)
+
+
+def test_rgb_to_cdl_decodes_crop_colors():
+    from deerscout.fetch import rgb_to_cdl
+
+    rgb = np.zeros((3, 1, 4), np.uint8)
+    rgb[:, 0, 0] = (255, 210, 0)  # corn, slightly off-palette
+    rgb[:, 0, 1] = (36, 110, 0)  # soybeans
+    rgb[:, 0, 2] = (154, 154, 154)  # developed -> not a crop
+    rgb[:, 0, 3] = (255, 163, 224)  # alfalfa
+    assert list(rgb_to_cdl(rgb)[0]) == [1, 5, 0, 36]
+
+
+def test_nwi_codes():
+    from deerscout.fetch import nwi_code
+
+    assert nwi_code("PSS1A") == 2 and nwi_code("PEM1C") == 1 and nwi_code("PFO1A") == 3
+    assert nwi_code("L1UBH") == 4 and nwi_code("") == 0
+
+
+def test_osm_classify():
+    from deerscout.osm import classify
+
+    assert classify({"highway": "residential"}) == "road"
+    assert classify({"highway": "service", "service": "driveway"}) is None
+    assert classify({"highway": "path", "name": "Luce Line"}) == "busy"
+    assert classify({"highway": "track"}) == "quiet"
+    assert classify({"amenity": "parking"}) == "parking"

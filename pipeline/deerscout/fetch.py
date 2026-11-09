@@ -159,18 +159,32 @@ def rgb_to_cdl(rgb: np.ndarray, tol: float = 18.0) -> np.ndarray:
 _CROPSCAPE = {"failures": 0}
 
 
-def fetch_cdl(src: dict[str, Any], grid: Grid) -> tuple[np.ndarray, str]:
+def _mngeo_cdl(src: dict[str, Any], grid: Grid) -> np.ndarray:
+    out = np.zeros(grid.shape, np.uint8)
+    for sub, r0, c0 in _blocks(grid):
+        raw = _export_image(src["cdl_mngeo"], sub, {"interpolation": "RSP_NearestNeighbor"})
+        with MemoryFile(raw) as mf, mf.open() as ds:
+            rgb = ds.read([1, 2, 3])
+        h, w = sub.shape
+        out[r0 : r0 + h, c0 : c0 + w] = rgb_to_cdl(rgb)[:h, :w]
+    return out
+
+
+def fetch_cdl(src: dict[str, Any], grid: Grid, state: str = "MN") -> tuple[np.ndarray, str]:
     """CDL class codes on the grid. CropScape (raw codes) first, MnGeo RGB fallback.
 
     CropScape can hang; after two failures it is skipped for the rest of the run.
     """
+    if state == "MN":
+        # MnGeo is fast and covers Minnesota; CropScape's file service often hangs.
+        return _mngeo_cdl(src, grid), "MnGeo CDL 2025 (RGB decoded)"
     minx, miny, maxx, maxy = grid.bounds
     for year in (src["cdl_year"], src["cdl_year"] - 1):
-        if _CROPSCAPE["failures"] >= 2:
+        if _CROPSCAPE["failures"] >= 3:
             break
         try:
             b = transform_bounds(WEB, CRS.from_epsg(5070), minx, miny, maxx, maxy)
-            xml = get(src["cdl_cropscape"], {"year": str(year), "bbox": ",".join(f"{v:.0f}" for v in b)}, tries=1, timeout=40).decode()
+            xml = get(src["cdl_cropscape"], {"year": str(year), "bbox": ",".join(f"{v:.0f}" for v in b)}, tries=1, timeout=120).decode()
             m = re.search(r"<returnURL>(.*?)</returnURL>", xml)
             if not m:
                 raise RuntimeError(xml[:200])
@@ -183,14 +197,8 @@ def fetch_cdl(src: dict[str, Any], grid: Grid) -> tuple[np.ndarray, str]:
         except Exception as e:  # noqa: BLE001
             _CROPSCAPE["failures"] += 1
             log.warning("CropScape %s failed (%d): %s", year, _CROPSCAPE["failures"], str(e)[:200])
-    out = np.zeros(grid.shape, np.uint8)
-    for sub, r0, c0 in _blocks(grid):
-        raw = _export_image(src["cdl_mngeo"], sub, {"interpolation": "RSP_NearestNeighbor"})
-        with MemoryFile(raw) as mf, mf.open() as ds:
-            rgb = ds.read([1, 2, 3])
-        h, w = sub.shape
-        out[r0 : r0 + h, c0 : c0 + w] = rgb_to_cdl(rgb)[:h, :w]
-    return out, "MnGeo CDL 2025 (RGB decoded)"
+    out = _mngeo_cdl(src, grid)
+    return out, "MnGeo CDL 2025 (RGB decoded)" if out.any() else "none (NLCD crops used)"
 
 
 def fetch_nlcd(src: dict[str, Any], grid: Grid) -> np.ndarray:
